@@ -11,6 +11,18 @@ final class ControllerService {
 
     private(set) var leftStick: SIMD2<Float> = .zero
     private(set) var rightStick: SIMD2<Float> = .zero
+    private(set) var current: GCController?
+
+    /// e.g. "82 % ⚡" while charging, nil when the controller doesn't report battery
+    var batteryDescription: String? {
+        guard let battery = current?.battery, battery.batteryLevel >= 0 else { return nil }
+        let percent = Int((battery.batteryLevel * 100).rounded())
+        switch battery.batteryState {
+        case .charging: return "\(percent) % ⚡"
+        case .full: return "100 %"
+        default: return "\(percent) %"
+        }
+    }
 
     func start() {
         NotificationCenter.default.addObserver(
@@ -22,6 +34,7 @@ final class ControllerService {
         NotificationCenter.default.addObserver(
             forName: .GCControllerDidDisconnect, object: nil, queue: .main
         ) { [weak self] _ in
+            self?.current = nil
             self?.leftStick = .zero
             self?.rightStick = .zero
             self?.onDisconnect?()
@@ -31,6 +44,7 @@ final class ControllerService {
 
     private func attach(_ controller: GCController) {
         guard let pad = controller.extendedGamepad else { return }
+        current = controller
         onConnect?(controller.vendorName ?? "Controller")
 
         pad.leftThumbstick.valueChangedHandler = { [weak self] _, x, y in

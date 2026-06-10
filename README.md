@@ -21,24 +21,25 @@ AI coding agents spend a lot of time working while you wait, then suddenly need 
 ```bash
 git clone https://github.com/YOURNAME/agentpad.git
 cd agentpad
-swift build -c release
-.build/release/agentpad
+./scripts/make-app.sh        # builds dist/agentpad.app
+open dist/agentpad.app       # or copy it to /Applications first
 ```
 
 A 🎮 icon appears in your menu bar. On first launch macOS will ask you to grant the **Accessibility** permission — see below, the app cannot move your mouse without it.
+
+> **Don't run the bare `.build/release/agentpad` binary directly:** it lives and dies with your terminal window, and macOS attributes its permissions to the terminal instead of the app. The `.app` bundle is the supported way.
 
 ## Granting the Accessibility permission
 
 macOS requires explicit permission before any app may control mouse and keyboard:
 
-1. On first launch you'll get a system prompt → **Open System Settings**, or go to **System Settings → Privacy & Security → Accessibility** manually.
+1. On first launch you'll get a system prompt → **Open System Settings** (the dropdown also has a "Grant Accessibility Permission…" shortcut), or go to **System Settings → Privacy & Security → Accessibility** manually.
 2. Add (or enable) `agentpad` and toggle it **on**.
-3. Restart agentpad. The menu bar icon switches from ⚠️ to 🎮.
+3. That's it — agentpad notices the grant within a couple of seconds, no relaunch needed. The menu bar icon switches from ⚠️ to 🎮.
 
 **Gotchas:**
 
-- The permission sticks to the binary. If you **rebuild**, macOS may treat it as a new app — remove and re-add it in the Accessibility list.
-- If you launch agentpad **from a terminal**, macOS may attribute the permission to the terminal app instead. That works, but granting it to the binary itself (e.g. launching via Finder or `open`) is cleaner.
+- The permission sticks to the app's identity. After **rebuilding**, macOS may treat it as a new app — remove and re-add it in the Accessibility list.
 - If buttons stay silent although the cursor moves, check **System Settings → Privacy & Security → Input Monitoring** as well.
 
 ## Default mapping

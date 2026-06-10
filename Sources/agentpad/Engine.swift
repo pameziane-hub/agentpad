@@ -14,10 +14,11 @@ final class Engine {
     private let controller: ControllerService
     private let output: OutputService
     private let config: Config
-    private let accessibilityTrusted: Bool
+    private var accessibilityTrusted: Bool
 
     private(set) var state: State = .noController
     private(set) var controllerName: String?
+    var batteryDescription: String? { controller.batteryDescription }
     var onStateChange: (() -> Void)?
 
     private var paused = false
@@ -60,6 +61,14 @@ final class Engine {
 
     func togglePause() {
         paused.toggle()
+        refreshState()
+    }
+
+    /// Called by the trust poller so granting Accessibility in System
+    /// Settings takes effect without relaunching the app.
+    func updateTrust(_ trusted: Bool) {
+        guard trusted != accessibilityTrusted else { return }
+        accessibilityTrusted = trusted
         refreshState()
     }
 
