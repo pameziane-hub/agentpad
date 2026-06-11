@@ -103,9 +103,11 @@ final class MapOverlayController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.contentView = container
         if let screen = NSScreen.main {
+            // top-center, just under the menu bar: that's where eyes already
+            // are while working — bottom placement got overlooked in testing
             let frame = screen.visibleFrame
             panel.setFrameOrigin(NSPoint(x: frame.midX - container.frame.width / 2,
-                                         y: frame.minY + 96))
+                                         y: frame.maxY - container.frame.height - 12))
         }
         panel.orderFrontRegardless()
         hudPanel = panel
