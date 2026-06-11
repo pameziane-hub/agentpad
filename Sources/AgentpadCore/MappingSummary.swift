@@ -15,9 +15,18 @@ public enum MappingSummary {
     ]
 
     public static func rows(for config: Config) -> [(button: String, action: String)] {
-        displayOrder.compactMap { entry in
-            guard let action = config.buttons[entry.id] else { return nil }
-            return (button: entry.label, action: describe(action))
+        displayOrder.flatMap { entry -> [(button: String, action: String)] in
+            guard let action = config.buttons[entry.id] else { return [] }
+            var rows = [(button: entry.label, action: describe(action))]
+            // a layer gets one extra row per overlay entry, e.g. "LT + D-Pad ←"
+            if case .layer(_, let overlay) = action {
+                rows += displayOrder.compactMap { held in
+                    guard let overlayAction = overlay[held.id] else { return nil }
+                    return (button: "\(entry.label) + \(held.label)",
+                            action: describe(overlayAction))
+                }
+            }
+            return rows
         }
     }
 
@@ -29,6 +38,8 @@ public enum MappingSummary {
         case .url(let url):
             // friendly label for the dictation app this project was built around
             return url.lowercased().hasPrefix("superwhisper://") ? "Superwhisper" : url
+        case .layer(let tap, _):
+            return tap.map { "\(describe($0)) (tap)" } ?? "Layer"
         case .key(let raw):
             return raw.split(separator: " ")
                 .map { combo in

@@ -17,8 +17,9 @@ public struct ScrollConfig: Codable, Equatable {
 
 /// What a controller button does. JSON uses a `type` discriminator:
 /// `{"type":"key","value":"shift+tab"}`, `{"type":"url","value":"superwhisper://record"}`,
-/// `{"type":"leftClick"}`, `{"type":"rightClick"}`, `{"type":"pause"}`.
-public enum ButtonAction: Equatable {
+/// `{"type":"leftClick"}`, `{"type":"rightClick"}`, `{"type":"pause"}`,
+/// `{"type":"layer","tap":{…},"overlay":{"dpadLeft":{…}}}`.
+public indirect enum ButtonAction: Equatable {
     /// A key combo or space-separated sequence, parsed by KeyComboParser.
     case key(String)
     /// A URL/deep link opened with the default handler.
@@ -27,10 +28,14 @@ public enum ButtonAction: Equatable {
     case rightClick
     /// Toggle all mapping on/off.
     case pause
+    /// Hold-modifier (Steam-Input style layer shift): while held, buttons in
+    /// `overlay` replace their base actions; press + release with no overlay
+    /// use fires `tap` instead, so the button keeps a primary action.
+    case layer(tap: ButtonAction?, overlay: [String: ButtonAction])
 }
 
 extension ButtonAction: Codable {
-    private enum CodingKeys: String, CodingKey { case type, value }
+    private enum CodingKeys: String, CodingKey { case type, value, tap, overlay }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -41,6 +46,10 @@ extension ButtonAction: Codable {
         case "leftClick": self = .leftClick
         case "rightClick": self = .rightClick
         case "pause": self = .pause
+        case "layer":
+            self = .layer(
+                tap: try container.decodeIfPresent(ButtonAction.self, forKey: .tap),
+                overlay: try container.decode([String: ButtonAction].self, forKey: .overlay))
         default:
             throw DecodingError.dataCorruptedError(
                 forKey: .type, in: container,
@@ -60,6 +69,10 @@ extension ButtonAction: Codable {
         case .leftClick: try container.encode("leftClick", forKey: .type)
         case .rightClick: try container.encode("rightClick", forKey: .type)
         case .pause: try container.encode("pause", forKey: .type)
+        case .layer(let tap, let overlay):
+            try container.encode("layer", forKey: .type)
+            try container.encodeIfPresent(tap, forKey: .tap)
+            try container.encode(overlay, forKey: .overlay)
         }
     }
 }
@@ -138,7 +151,12 @@ public struct Config: Codable, Equatable {
             "leftShoulder": .key("cmd+`"),
             // double-tap Control: the default macOS dictation shortcut
             "rightShoulder": .key("ctrl ctrl"),
-            "leftTrigger": .rightClick,
+            // tap = right click; held, the D-Pad switches macOS Spaces so
+            // plain arrow keys stay available for menu navigation
+            "leftTrigger": .layer(tap: .rightClick, overlay: [
+                "dpadLeft": .key("ctrl+left"),
+                "dpadRight": .key("ctrl+right"),
+            ]),
             // the trigger "fires" the prompt: Return submits/accepts
             "rightTrigger": .key("return"),
             "l3": .key("cmd+c"),

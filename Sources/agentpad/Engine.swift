@@ -170,7 +170,7 @@ final class Engine {
         case .url(let urlString):
             guard pressed else { return }
             output.open(urlString: urlString)
-        case .pause:
+        case .pause, .layer:
             break
         }
     }

@@ -39,6 +39,40 @@ final class ConfigTests: XCTestCase {
         )
     }
 
+    func testDecodesLayerAction() throws {
+        let json = """
+        {"type":"layer","tap":{"type":"rightClick"},
+         "overlay":{"dpadLeft":{"type":"key","value":"ctrl+left"},
+                    "dpadRight":{"type":"key","value":"ctrl+right"}}}
+        """
+        let action = try JSONDecoder().decode(ButtonAction.self, from: Data(json.utf8))
+        XCTAssertEqual(action, .layer(tap: .rightClick, overlay: [
+            "dpadLeft": .key("ctrl+left"),
+            "dpadRight": .key("ctrl+right"),
+        ]))
+    }
+
+    func testDecodesLayerWithoutTap() throws {
+        let json = #"{"type":"layer","overlay":{"a":{"type":"leftClick"}}}"#
+        let action = try JSONDecoder().decode(ButtonAction.self, from: Data(json.utf8))
+        XCTAssertEqual(action, .layer(tap: nil, overlay: ["a": .leftClick]))
+    }
+
+    func testLayerActionRoundtrips() throws {
+        let layer = ButtonAction.layer(tap: .rightClick,
+                                       overlay: ["dpadLeft": .key("ctrl+left")])
+        let data = try JSONEncoder().encode(layer)
+        XCTAssertEqual(try JSONDecoder().decode(ButtonAction.self, from: data), layer)
+    }
+
+    func testDefaultLeftTriggerIsRightClickLayer() {
+        XCTAssertEqual(Config.default.buttons["leftTrigger"],
+                       .layer(tap: .rightClick, overlay: [
+                           "dpadLeft": .key("ctrl+left"),
+                           "dpadRight": .key("ctrl+right"),
+                       ]))
+    }
+
     func testLoadWithMissingFileWritesDefaultAndReturnsIt() {
         let url = tempDir.appendingPathComponent("mapping.json")
         let config = ConfigLoader.load(from: url)

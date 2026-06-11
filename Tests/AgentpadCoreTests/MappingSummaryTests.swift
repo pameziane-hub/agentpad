@@ -19,17 +19,38 @@ final class MappingSummaryTests: XCTestCase {
         XCTAssertEqual(MappingSummary.describe(.url("raycast://foo")), "raycast://foo")
     }
 
+    func testDescribesLayerByItsTapAction() {
+        let layer = ButtonAction.layer(tap: .rightClick,
+                                       overlay: ["dpadLeft": .key("ctrl+left")])
+        XCTAssertEqual(MappingSummary.describe(layer), "Right Click (tap)")
+    }
+
+    func testDescribesLayerWithoutTap() {
+        XCTAssertEqual(MappingSummary.describe(.layer(tap: nil, overlay: [:])), "Layer")
+    }
+
     func testRowsAreOrderedAndComplete() {
         let rows = MappingSummary.rows(for: .default)
-        XCTAssertEqual(rows.count, Config.default.buttons.count)
         XCTAssertEqual(rows.first?.button, "A")
         XCTAssertEqual(rows.first?.action, "Left Click")
-        // every configured button shows up, in the fixed display order
+        // every configured button shows up, in the fixed display order;
+        // the LT layer expands into one extra row per overlay entry
         XCTAssertEqual(rows.map(\.button), [
             "A", "B", "X", "Y",
             "D-Pad ↑", "D-Pad ↓", "D-Pad ←", "D-Pad →",
-            "LT", "RT", "LB", "RB", "L3", "R3", "Menu",
+            "LT", "LT + D-Pad ←", "LT + D-Pad →",
+            "RT", "LB", "RB", "L3", "R3", "Menu",
         ])
+    }
+
+    func testRowsExpandLayerOverlays() {
+        let rows = MappingSummary.rows(for: .default)
+        let ltIndex = rows.firstIndex(where: { $0.button == "LT" })!
+        XCTAssertEqual(rows[ltIndex].action, "Right Click (tap)")
+        XCTAssertEqual(rows[ltIndex + 1].button, "LT + D-Pad ←")
+        XCTAssertEqual(rows[ltIndex + 1].action, "Ctrl+Left")
+        XCTAssertEqual(rows[ltIndex + 2].button, "LT + D-Pad →")
+        XCTAssertEqual(rows[ltIndex + 2].action, "Ctrl+Right")
     }
 
     func testRowsSkipUnconfiguredButtons() {
@@ -37,6 +58,6 @@ final class MappingSummaryTests: XCTestCase {
         config.buttons.removeValue(forKey: "x")
         let rows = MappingSummary.rows(for: config)
         XCTAssertFalse(rows.map(\.button).contains("X"))
-        XCTAssertEqual(rows.count, Config.default.buttons.count - 1)
+        XCTAssertEqual(rows.count, MappingSummary.rows(for: .default).count - 1)
     }
 }
