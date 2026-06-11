@@ -98,10 +98,8 @@ final class OutputService {
         var count: UInt32 = 0
         CGGetActiveDisplayList(16, &displayIDs, &count)
         let bounds = (0..<Int(count)).map { CGDisplayBounds(displayIDs[$0]) }
-        if bounds.contains(where: { $0.contains(point) }) { return point }
-        let main = bounds.first ?? CGDisplayBounds(CGMainDisplayID())
-        return CGPoint(x: min(max(point.x, main.minX), main.maxX - 1),
-                       y: min(max(point.y, main.minY), main.maxY - 1))
+        guard !bounds.isEmpty else { return point }
+        return DisplayClamp.clamp(point, to: bounds)
     }
 
     // MARK: - Keyboard
