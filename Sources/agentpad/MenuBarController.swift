@@ -165,7 +165,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         dot.frame = NSRect(x: 14, y: 26, width: 16, height: 16)
         view.addSubview(dot)
 
-        let title = NSTextField(labelWithString: "agentpad")
+        var appTitle = "agentpad"
+        if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
+            appTitle += "  v\(version)"
+        }
+        let title = NSTextField(labelWithString: appTitle)
         title.font = .boldSystemFont(ofSize: 13)
         title.frame = NSRect(x: 32, y: 26, width: 200, height: 17)
         view.addSubview(title)
