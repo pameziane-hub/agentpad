@@ -189,6 +189,24 @@ final class LayerRouterTests: XCTestCase {
         XCTAssertEqual(router.hudLayer, "leftTrigger")
     }
 
+    func testMenuExpiresAfterTimeout() {
+        _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
+        _ = router.handle(id: "leftTrigger", pressed: false, at: 0.5, buttons: buttons)
+        XCTAssertFalse(router.expireMenu(at: 6.4))   // 5.9 s open: stays
+        XCTAssertEqual(router.hudLayer, "leftTrigger")
+        XCTAssertTrue(router.expireMenu(at: 6.6))    // 6.1 s open: closes
+        XCTAssertNil(router.hudLayer)
+        XCTAssertEqual(router.handle(id: "a", pressed: true, at: 6.7, buttons: buttons),
+                       .action(.leftClick, pressed: true))
+    }
+
+    func testExpireDoesNothingWithoutAnOpenMenu() {
+        XCTAssertFalse(router.expireMenu(at: 100))
+        _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
+        // held layer is not an open menu: holding may take as long as it likes
+        XCTAssertFalse(router.expireMenu(at: 100))
+    }
+
     func testResetClosesMenu() {
         _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
         _ = router.handle(id: "leftTrigger", pressed: false, at: 0.5, buttons: buttons)

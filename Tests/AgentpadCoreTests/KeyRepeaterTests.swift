@@ -43,4 +43,15 @@ final class KeyRepeaterTests: XCTestCase {
         repeater.reset()
         XCTAssertNil(repeater.nextFire(at: 11.0))
     }
+
+    func testOnlyHarmlessCombosRepeat() {
+        // plain keys and shift-selections repeat like on a keyboard…
+        XCTAssertTrue(KeyRepeater.isRepeatable(KeyCombo(keyCode: 51, flags: [])))
+        XCTAssertTrue(KeyRepeater.isRepeatable(KeyCombo(keyCode: 123, flags: [.shift])))
+        // …but command/control/option shortcuts fire once per press: a held
+        // stick click must never spam cmd+z or cmd+v
+        XCTAssertFalse(KeyRepeater.isRepeatable(KeyCombo(keyCode: 9, flags: [.command])))
+        XCTAssertFalse(KeyRepeater.isRepeatable(KeyCombo(keyCode: 123, flags: [.control])))
+        XCTAssertFalse(KeyRepeater.isRepeatable(KeyCombo(keyCode: 123, flags: [.option])))
+    }
 }

@@ -151,6 +151,10 @@ final class Engine {
             // repeats skip the FX hook on purpose: one shot sound per press
             output.post(combo)
         }
+
+        if router.expireMenu(at: now) {
+            onLayerHold?(router.hudLayer)
+        }
     }
 
     private func handleButton(id: String, pressed: Bool) {
@@ -195,7 +199,8 @@ final class Engine {
         if pressed {
             guard let sequence = KeyComboParser.parseSequence(raw),
                   sequence.count == 1, let combo = sequence.first,
-                  !KeyComboParser.isModifierOnly(combo) else { return }
+                  !KeyComboParser.isModifierOnly(combo),
+                  KeyRepeater.isRepeatable(combo) else { return }
             repeater.keyDown(id: id, combo: combo, at: now)
         } else {
             repeater.keyUp(id: id)

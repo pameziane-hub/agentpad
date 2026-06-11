@@ -16,6 +16,13 @@ public struct KeyRepeater {
         self.interval = interval
     }
 
+    /// Plain keys and shift-selections repeat like on a keyboard; command/
+    /// control/option shortcuts fire once per press — a held stick click
+    /// must never spam cmd+z or cmd+v.
+    public static func isRepeatable(_ combo: KeyCombo) -> Bool {
+        combo.flags.isDisjoint(with: [.command, .control, .option])
+    }
+
     public mutating func keyDown(id: String, combo: KeyCombo, at time: TimeInterval) {
         heldId = id
         self.combo = combo

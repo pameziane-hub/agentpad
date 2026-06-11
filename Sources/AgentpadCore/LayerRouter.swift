@@ -24,10 +24,13 @@ public struct LayerRouter {
     /// a menu. The HUD uses the same threshold, so "HUD visible" and
     /// "menu mode" are always the same thing.
     public static let holdThreshold: TimeInterval = 0.3
+    /// An untouched open menu folds away by itself after this long.
+    public static let menuTimeout: TimeInterval = 6.0
 
     public private(set) var heldLayer: String?
     /// Layer whose menu stays open after release, awaiting a pick.
     private var openMenu: String?
+    private var menuOpenedAt: TimeInterval = 0
     private var heldSince: TimeInterval = 0
     private var layerUsed = false
     /// Action chosen at press time, so a down/up pair never splits across
@@ -44,6 +47,14 @@ public struct LayerRouter {
                                 buttons: [String: ButtonAction]) -> Event {
         pressed ? handlePress(of: id, at: time, buttons: buttons)
                 : handleRelease(of: id, at: time, buttons: buttons)
+    }
+
+    /// Driven by the engine tick: folds an untouched menu away after
+    /// `menuTimeout`. Returns true when it closed (the HUD needs updating).
+    public mutating func expireMenu(at time: TimeInterval) -> Bool {
+        guard openMenu != nil, time - menuOpenedAt >= Self.menuTimeout else { return false }
+        openMenu = nil
+        return true
     }
 
     /// Clear all held state (on pause, disconnect, …) so no layer, open
@@ -96,6 +107,7 @@ public struct LayerRouter {
                 return tap.map { .tap($0) } ?? .nothing
             }
             openMenu = id
+            menuOpenedAt = time
             return .nothing
         }
         guard let action = pressActions.removeValue(forKey: id) else { return .nothing }
