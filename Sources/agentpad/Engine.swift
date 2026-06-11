@@ -26,6 +26,13 @@ final class Engine {
     var onViewButton: (() -> Void)?
     /// Remap capture: gets every button event first; returning true consumes it.
     var captureHandler: ((String, Bool) -> Bool)?
+    /// HUD hook: fires with the layer button id on hold, nil on release.
+    var onLayerHold: ((String?) -> Void)?
+
+    private var router = LayerRouter()
+    private var repeater = KeyRepeater(
+        initialDelay: NSEvent.keyRepeatDelay,
+        interval: NSEvent.keyRepeatInterval)
 
     private let log = Logger(subsystem: "com.paulameziane.agentpad", category: "engine")
     private var paused = false
@@ -92,6 +99,13 @@ final class Engine {
         } else {
             state = .active
         }
+        if state != .active {
+            // no ghost layer or running repeat may survive a pause,
+            // disconnect, or permission loss
+            router.reset()
+            repeater.reset()
+            onLayerHold?(nil)
+        }
         log.info("state: \(String(describing: self.state), privacy: .public)")
         onStateChange?()
     }
@@ -132,6 +146,11 @@ final class Engine {
             output.scroll(dx: Double(-scroll.x) * scrollConfig.speed * dt,
                           dy: Double(scroll.y) * scrollConfig.speed * dt)
         }
+
+        if let combo = repeater.nextFire(at: now) {
+            // repeats skip the FX hook on purpose: one shot sound per press
+            output.post(combo)
+        }
     }
 
     private func handleButton(id: String, pressed: Bool) {
@@ -143,15 +162,44 @@ final class Engine {
         // an active remap capture eats the event
         if let capture = captureHandler, capture(id, pressed) { return }
 
-        guard let action = store.config.buttons[id] else { return }
-
         // pause must always work, even while paused
-        if case .pause = action {
+        if case .pause = store.config.buttons[id] {
             if pressed { togglePause() }
             return
         }
         guard state == .active else { return }
 
+        let heldBefore = router.heldLayer
+        let event = router.handle(id: id, pressed: pressed, buttons: store.config.buttons)
+        if router.heldLayer != heldBefore { onLayerHold?(router.heldLayer) }
+
+        switch event {
+        case .nothing:
+            break
+        case .action(let action, let isDown):
+            feedRepeater(id: id, action: action, pressed: isDown)
+            perform(action, pressed: isDown)
+        case .tap(let action):
+            perform(action, pressed: true)
+            perform(action, pressed: false)
+        }
+    }
+
+    /// Single key combos repeat while held, like a real keyboard key.
+    /// Sequences, modifier-only taps, clicks and URLs don't repeat.
+    private func feedRepeater(id: String, action: ButtonAction, pressed: Bool) {
+        guard case .key(let raw) = action else { return }
+        if pressed {
+            guard let sequence = KeyComboParser.parseSequence(raw),
+                  sequence.count == 1, let combo = sequence.first,
+                  !KeyComboParser.isModifierOnly(combo) else { return }
+            repeater.keyDown(id: id, combo: combo, at: Date.timeIntervalSinceReferenceDate)
+        } else {
+            repeater.keyUp(id: id)
+        }
+    }
+
+    private func perform(_ action: ButtonAction, pressed: Bool) {
         switch action {
         case .leftClick:
             if pressed, store.config.fx.sounds {
