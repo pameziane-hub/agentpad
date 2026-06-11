@@ -1,11 +1,13 @@
 import AVFoundation
 import AppKit
 import AgentpadCore
+import os.log
 
 /// Synthesized sound effects in four flavors per event — no bundled audio
 /// assets, so the repo stays license-clean. Users can replace them entirely
 /// by dropping `shot.wav` / `reload.wav` into `~/.config/agentpad/`.
 final class SoundFX {
+    private let log = Logger(subsystem: "com.paulameziane.agentpad", category: "sound")
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()
     private let format: AVAudioFormat
@@ -40,6 +42,7 @@ final class SoundFX {
     var hasCustomReload: Bool { customReload != nil }
 
     func playShot(variant: String) {
+        log.debug("playShot variant=\(variant, privacy: .public)")
         if variant == "custom", let customShot {
             customShot.stop()
             customShot.play()
@@ -49,6 +52,7 @@ final class SoundFX {
     }
 
     func playReload(variant: String) {
+        log.debug("playReload variant=\(variant, privacy: .public)")
         if variant == "custom", let customReload {
             customReload.stop()
             customReload.play()
@@ -58,7 +62,11 @@ final class SoundFX {
     }
 
     private func play(buffer: AVAudioPCMBuffer?) {
-        guard let buffer, ensureEngineRunning() else { return }
+        guard let buffer else {
+            log.error("no buffer for requested variant")
+            return
+        }
+        guard ensureEngineRunning() else { return }
         player.scheduleBuffer(buffer, at: nil)
         player.play()
     }
@@ -70,6 +78,7 @@ final class SoundFX {
             started = true
             return true
         } catch {
+            log.error("audio engine start failed: \(error.localizedDescription, privacy: .public)")
             return false
         }
     }
