@@ -35,6 +35,13 @@ public final class ConfigStore {
         onChange?()
     }
 
+    public func setMagnetEnabled(_ enabled: Bool) {
+        guard config.magnet.enabled != enabled else { return }
+        config.magnet.enabled = enabled
+        ConfigLoader.write(config, to: url)
+        onChange?()
+    }
+
     public func setVolume(_ volume: Float) {
         let clamped = min(max(volume, 0), 1)
         guard config.fx.volume != clamped else { return }

@@ -122,21 +122,46 @@ public struct FxConfig: Codable, Equatable {
     }
 }
 
+/// Sticky-target cursor assist ("aim friction"), see the magnet spec.
+public struct MagnetConfig: Codable, Equatable {
+    public var enabled: Bool
+    /// 0…1 — scales how hard targets damp cursor speed.
+    public var strength: Float
+
+    public init(enabled: Bool = true, strength: Float = 0.5) {
+        self.enabled = enabled
+        self.strength = strength
+    }
+
+    private enum CodingKeys: String, CodingKey { case enabled, strength }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        // every field optional: older configs keep decoding
+        enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
+        let raw = try container.decodeIfPresent(Float.self, forKey: .strength) ?? 0.5
+        strength = min(max(raw, 0), 1)
+    }
+}
+
 public struct Config: Codable, Equatable {
     public var pointer: PointerConfig
     public var scroll: ScrollConfig
     /// Button id (a, b, x, y, dpadUp…, leftShoulder…, menu) → action.
     public var buttons: [String: ButtonAction]
     public var fx: FxConfig
+    public var magnet: MagnetConfig
 
-    private enum CodingKeys: String, CodingKey { case pointer, scroll, buttons, fx }
+    private enum CodingKeys: String, CodingKey { case pointer, scroll, buttons, fx, magnet }
 
     public init(pointer: PointerConfig, scroll: ScrollConfig,
-                buttons: [String: ButtonAction], fx: FxConfig = FxConfig()) {
+                buttons: [String: ButtonAction], fx: FxConfig = FxConfig(),
+                magnet: MagnetConfig = MagnetConfig()) {
         self.pointer = pointer
         self.scroll = scroll
         self.buttons = buttons
         self.fx = fx
+        self.magnet = magnet
     }
 
     public init(from decoder: Decoder) throws {
@@ -144,8 +169,9 @@ public struct Config: Codable, Equatable {
         pointer = try container.decode(PointerConfig.self, forKey: .pointer)
         scroll = try container.decode(ScrollConfig.self, forKey: .scroll)
         buttons = try container.decode([String: ButtonAction].self, forKey: .buttons)
-        // configs written before the fx feature existed have no fx key
+        // sections added over time stay optional so old configs keep decoding
         fx = try container.decodeIfPresent(FxConfig.self, forKey: .fx) ?? FxConfig()
+        magnet = try container.decodeIfPresent(MagnetConfig.self, forKey: .magnet) ?? MagnetConfig()
     }
 
     public static let `default` = Config(
