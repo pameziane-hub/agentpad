@@ -168,6 +168,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         case "RT": return ["rt.button.roundedtop.horizontal.fill", "r2.button.roundedtop.horizontal.fill", "circle.righthalf.filled"]
         case "LB": return ["lb.button.roundedbottom.horizontal.fill", "l1.button.roundedbottom.horizontal.fill", "circle.lefthalf.filled"]
         case "RB": return ["rb.button.roundedbottom.horizontal.fill", "r1.button.roundedbottom.horizontal.fill", "circle.righthalf.filled"]
+        case "L3": return ["l.joystick.press.down.fill", "l.joystick.press.down"]
+        case "R3": return ["r.joystick.press.down.fill", "r.joystick.press.down"]
         case "Menu": return ["line.3.horizontal.circle.fill"]
         default: return ["dpad.fill"]
         }

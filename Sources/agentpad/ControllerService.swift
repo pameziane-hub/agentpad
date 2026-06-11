@@ -73,6 +73,8 @@ final class ControllerService {
         bind(pad.rightShoulder, as: "rightShoulder")
         bind(pad.leftTrigger, as: "leftTrigger")
         bind(pad.rightTrigger, as: "rightTrigger")
+        if let l3 = pad.leftThumbstickButton { bind(l3, as: "l3") }
+        if let r3 = pad.rightThumbstickButton { bind(r3, as: "r3") }
         bind(pad.dpad.up, as: "dpadUp")
         bind(pad.dpad.down, as: "dpadDown")
         bind(pad.dpad.left, as: "dpadLeft")

@@ -66,6 +66,7 @@ final class ConfigTests: XCTestCase {
             "a", "b", "x", "y",
             "dpadUp", "dpadDown", "dpadLeft", "dpadRight",
             "leftShoulder", "rightShoulder", "leftTrigger", "rightTrigger",
+            "l3", "r3",
             "menu",
         ]
         XCTAssertEqual(Set(Config.default.buttons.keys), expected)

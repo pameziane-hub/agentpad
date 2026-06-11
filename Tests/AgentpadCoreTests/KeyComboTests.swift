@@ -41,4 +41,10 @@ final class KeyComboTests: XCTestCase {
         XCTAssertEqual(KeyComboParser.parse("1"), KeyCombo(keyCode: 18, flags: []))
         XCTAssertEqual(KeyComboParser.parse("3"), KeyCombo(keyCode: 20, flags: []))
     }
+
+    func testLetterShortcuts() {
+        XCTAssertEqual(KeyComboParser.parse("cmd+c"), KeyCombo(keyCode: 8, flags: [.command]))
+        XCTAssertEqual(KeyComboParser.parse("cmd+v"), KeyCombo(keyCode: 9, flags: [.command]))
+        XCTAssertEqual(KeyComboParser.parse("cmd+shift+z"), KeyCombo(keyCode: 6, flags: [.command, .shift]))
+    }
 }

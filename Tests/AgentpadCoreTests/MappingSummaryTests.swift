@@ -23,12 +23,12 @@ final class MappingSummaryTests: XCTestCase {
         let rows = MappingSummary.rows(for: .default)
         XCTAssertEqual(rows.count, Config.default.buttons.count)
         XCTAssertEqual(rows.first?.button, "A")
-        XCTAssertEqual(rows.first?.action, "Return")
+        XCTAssertEqual(rows.first?.action, "Left Click")
         // every configured button shows up, in the fixed display order
         XCTAssertEqual(rows.map(\.button), [
             "A", "B", "X", "Y",
             "D-Pad ↑", "D-Pad ↓", "D-Pad ←", "D-Pad →",
-            "LT", "RT", "LB", "RB", "Menu",
+            "LT", "RT", "LB", "RB", "L3", "R3", "Menu",
         ])
     }
 

@@ -124,6 +124,11 @@ final class OutputService {
 
     func open(urlString: String) {
         guard let url = URL(string: urlString) else { return }
-        NSWorkspace.shared.open(url)
+        // never activate the handling app: dictation tools must paste into
+        // the input that is focused RIGHT NOW, so the frontmost app (your
+        // terminal with the agent session) has to keep focus throughout
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = false
+        NSWorkspace.shared.open(url, configuration: configuration)
     }
 }

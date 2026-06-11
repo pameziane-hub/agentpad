@@ -10,6 +10,7 @@ public enum MappingSummary {
         ("dpadLeft", "D-Pad ←"), ("dpadRight", "D-Pad →"),
         ("leftTrigger", "LT"), ("rightTrigger", "RT"),
         ("leftShoulder", "LB"), ("rightShoulder", "RB"),
+        ("l3", "L3"), ("r3", "R3"),
         ("menu", "Menu"),
     ]
 

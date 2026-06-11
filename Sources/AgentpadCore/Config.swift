@@ -74,7 +74,9 @@ public struct Config: Codable, Equatable {
         pointer: PointerConfig(deadzone: 0.12, expo: 0.6, maxSpeed: 1400),
         scroll: ScrollConfig(deadzone: 0.15, speed: 600),
         buttons: [
-            "a": .key("return"),
+            // A = click follows Xbox UI convention (A is select/confirm);
+            // hold A and move the stick to drag
+            "a": .leftClick,
             "b": .key("esc"),
             "x": .key("tab"),
             "y": .key("shift+tab"),
@@ -86,7 +88,10 @@ public struct Config: Codable, Equatable {
             // double-tap Control: the default macOS dictation shortcut
             "rightShoulder": .key("ctrl ctrl"),
             "leftTrigger": .rightClick,
-            "rightTrigger": .leftClick,
+            // the trigger "fires" the prompt: Return submits/accepts
+            "rightTrigger": .key("return"),
+            "l3": .key("cmd+c"),
+            "r3": .key("cmd+v"),
             "menu": .pause,
         ])
 }

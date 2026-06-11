@@ -48,15 +48,16 @@ macOS requires explicit permission before any app may control mouse and keyboard
 |---|---|
 | Left stick | Move mouse (deadzone + expo curve) |
 | Right stick | Scroll |
-| **RT** (right trigger) | Left click — hold to drag |
-| **LT** (left trigger) | Right click |
-| **A** | Return — *accept prompt* |
+| **A** | Left click — hold + stick = drag & drop *(A is "select" on Xbox, it should click)* |
 | **B** | Escape — *cancel* |
 | **X** | Tab |
 | **Y** | Shift+Tab — *cycles Claude Code's permission modes* |
+| **RT** (right trigger) | Return — *fire off the prompt* |
+| **LT** (left trigger) | Right click |
 | D-Pad | Arrow keys — *navigate prompt options* |
 | **RB** (right bumper) | 🎙 Dictation (configurable, see below) |
 | **LB** (left bumper) | Cmd+` — cycle windows of the frontmost app |
+| **L3 / R3** (stick click) | Cmd+C / Cmd+V — copy & paste |
 | Menu (☰) | Pause / resume agentpad |
 
 ## Configuration
