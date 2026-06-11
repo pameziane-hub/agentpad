@@ -11,7 +11,9 @@ public enum MagnetField {
     /// Targets feel slightly bigger than they are.
     public static let margin: CGFloat = 8
     /// Above this cursor speed (pt/s) the assist disengages entirely.
-    public static let speedLimit: CGFloat = 600
+    /// Field test: 600 sat below Paul's normal cruising speed (maxSpeed
+    /// 1400) — the assist never engaged. Must stay near the speed ceiling.
+    public static let speedLimit: CGFloat = 1000
     /// Damping at full strength: movement × (1 − 0.55) = ×0.45.
     static let maxDamping: CGFloat = 0.55
     /// Steering engages within this distance of the target's frame.

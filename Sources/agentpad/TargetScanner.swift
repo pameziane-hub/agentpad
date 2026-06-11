@@ -44,9 +44,13 @@ final class TargetScanner {
     private static let clickableRoles: Set<String> = [
         "AXButton", "AXMenuBarItem", "AXMenuItem", "AXMenuButton",
         "AXLink", "AXCheckBox", "AXRadioButton", "AXPopUpButton",
-        "AXTextField", "AXComboBox",
+        "AXTextField", "AXComboBox", "AXDockItem", "AXTabButton",
+        "AXDisclosureTriangle", "AXIncrementor", "AXSegmentedControl",
     ]
     private static let maxTargetSize = CGSize(width: 320, height: 120)
+    /// Hit-tests usually land on a button's LABEL (AXStaticText, AXImage…);
+    /// climb this many parents looking for a clickable role.
+    private static let parentClimb = 4
 
     func start() {
         let timer = DispatchSource.makeTimerSource(queue: queue)
@@ -87,11 +91,30 @@ final class TargetScanner {
            let item = menuBarItem(in: element, at: point) {
             element = item
         }
-        guard let role = role(of: element),
-              Self.clickableRoles.contains(role),
-              let frame = frame(of: element),
+        // hits usually land on the label INSIDE a button: climb parents
+        // until a clickable role turns up
+        var hitRole = role(of: element) ?? "?"
+        var climbed = 0
+        while !Self.clickableRoles.contains(hitRole), climbed < Self.parentClimb {
+            var parentRef: CFTypeRef?
+            guard AXUIElementCopyAttributeValue(
+                    element, kAXParentAttribute as CFString, &parentRef) == .success,
+                  let parentRef else { break }
+            element = parentRef as! AXUIElement
+            hitRole = role(of: element) ?? "?"
+            climbed += 1
+        }
+        guard Self.clickableRoles.contains(hitRole) else {
+            log.debug("reject role=\(hitRole, privacy: .public)")
+            return nil
+        }
+        guard let frame = frame(of: element),
               frame.width <= Self.maxTargetSize.width,
-              frame.height <= Self.maxTargetSize.height else { return nil }
+              frame.height <= Self.maxTargetSize.height else {
+            log.debug("reject size role=\(hitRole, privacy: .public)")
+            return nil
+        }
+        log.debug("target role=\(hitRole, privacy: .public) \(Int(frame.width), privacy: .public)x\(Int(frame.height), privacy: .public)")
         return frame
     }
 

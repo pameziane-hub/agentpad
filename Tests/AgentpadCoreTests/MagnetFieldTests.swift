@@ -14,7 +14,7 @@ final class MagnetFieldTests: XCTestCase {
     func testHighSpeedIsFreeFlight() {
         // above the speed limit the assist must not engage at all
         let fast = MagnetField.adjust(movement: move, cursor: CGPoint(x: 120, y: 12),
-                                      target: target, strength: 1, speed: 800)
+                                      target: target, strength: 1, speed: 1200)
         XCTAssertEqual(fast, move)
     }
 
@@ -87,7 +87,7 @@ final class MagnetFieldTests: XCTestCase {
 
     func testHighSpeedApproachIsFreeFlight() {
         let fast = MagnetField.adjust(movement: move, cursor: CGPoint(x: 60, y: 20),
-                                      target: target, strength: 1, speed: 800)
+                                      target: target, strength: 1, speed: 1200)
         XCTAssertEqual(fast, move)
     }
 }
