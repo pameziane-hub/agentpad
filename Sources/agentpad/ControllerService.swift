@@ -1,9 +1,11 @@
 import Foundation
 import GameController
+import os.log
 
 /// Wraps GCController discovery and input. Xbox controllers paired over
 /// Bluetooth show up automatically; handlers fire on the main queue.
 final class ControllerService {
+    private let log = Logger(subsystem: "com.paulameziane.agentpad", category: "input")
     var onConnect: ((String) -> Void)?
     var onDisconnect: (() -> Void)?
     /// Button id (matching Config.buttons keys) and pressed state.
@@ -25,6 +27,11 @@ final class ControllerService {
     }
 
     func start() {
+        // A menu bar app is never the frontmost app. Without this flag the
+        // framework posts connect notifications but withholds ALL input
+        // events, which looks like a dead controller.
+        GCController.shouldMonitorBackgroundEvents = true
+
         NotificationCenter.default.addObserver(
             forName: .GCControllerDidConnect, object: nil, queue: .main
         ) { [weak self] notification in
@@ -43,8 +50,12 @@ final class ControllerService {
     }
 
     private func attach(_ controller: GCController) {
-        guard let pad = controller.extendedGamepad else { return }
+        guard let pad = controller.extendedGamepad else {
+            log.warning("controller without extendedGamepad profile ignored")
+            return
+        }
         current = controller
+        log.info("controller connected: \(controller.vendorName ?? "unknown", privacy: .public)")
         onConnect?(controller.vendorName ?? "Controller")
 
         pad.leftThumbstick.valueChangedHandler = { [weak self] _, x, y in
@@ -71,6 +82,7 @@ final class ControllerService {
 
     private func bind(_ button: GCControllerButtonInput, as id: String) {
         button.pressedChangedHandler = { [weak self] _, _, pressed in
+            self?.log.debug("button \(id, privacy: .public) \(pressed ? "down" : "up", privacy: .public)")
             self?.onButton?(id, pressed)
         }
     }

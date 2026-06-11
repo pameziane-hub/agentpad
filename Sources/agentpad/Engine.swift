@@ -1,5 +1,6 @@
 import AppKit
 import AgentpadCore
+import os.log
 
 /// Binds controller input to output actions: a 120 Hz tick maps the sticks
 /// to cursor movement and scrolling, button events dispatch config actions.
@@ -21,8 +22,11 @@ final class Engine {
     var batteryDescription: String? { controller.batteryDescription }
     var onStateChange: (() -> Void)?
 
+    private let log = Logger(subsystem: "com.paulameziane.agentpad", category: "engine")
     private var paused = false
     private var connected = false
+    private var stickWasMoving = false
+    private var movingTicks = 0
     private var timer: Timer?
     private var lastTick = Date.timeIntervalSinceReferenceDate
 
@@ -82,6 +86,7 @@ final class Engine {
         } else {
             state = .active
         }
+        log.info("state: \(String(describing: self.state), privacy: .public)")
         onStateChange?()
     }
 
@@ -93,6 +98,20 @@ final class Engine {
 
         let move = Curves.shape(x: controller.leftStick.x, y: controller.leftStick.y,
                                 deadzone: config.pointer.deadzone, expo: config.pointer.expo)
+        if move != .zero, !stickWasMoving {
+            stickWasMoving = true
+            movingTicks = 0
+            log.debug("stick movement started")
+        } else if move == .zero {
+            stickWasMoving = false
+        }
+        if stickWasMoving {
+            movingTicks += 1
+            // proves timer cadence in log captures: ~1 line per second of movement
+            if movingTicks % 120 == 0 {
+                log.debug("movement running: \(self.movingTicks, privacy: .public) ticks")
+            }
+        }
         if move != .zero {
             // GameController y points up, screen y points down
             output.moveCursor(dx: CGFloat(Double(move.x) * config.pointer.maxSpeed * dt),

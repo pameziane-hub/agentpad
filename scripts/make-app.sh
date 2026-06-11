@@ -45,9 +45,11 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
-# ad-hoc signature: lets macOS track the app's permission identity
-codesign --force --sign - "$APP"
+# A stable signing identity keeps the Accessibility grant across rebuilds.
+# Ad-hoc fallback works but forces a re-grant after every rebuild.
+SIGN_ID="${SIGN_ID:-$(security find-identity -v -p codesigning 2>/dev/null | awk -F'"' '/Apple Development/ {print $2; exit}')}"
+codesign --force --sign "${SIGN_ID:--}" "$APP"
 
-echo "✓ Built $APP"
+echo "✓ Built $APP (signed: ${SIGN_ID:-ad-hoc})"
 echo "  Launch:  open $APP"
 echo "  Install: cp -R $APP /Applications/"
