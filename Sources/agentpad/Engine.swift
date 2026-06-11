@@ -169,15 +169,17 @@ final class Engine {
         }
         guard state == .active else { return }
 
+        let now = Date.timeIntervalSinceReferenceDate
         let heldBefore = router.heldLayer
-        let event = router.handle(id: id, pressed: pressed, buttons: store.config.buttons)
+        let event = router.handle(id: id, pressed: pressed, at: now,
+                                  buttons: store.config.buttons)
         if router.heldLayer != heldBefore { onLayerHold?(router.heldLayer) }
 
         switch event {
         case .nothing:
             break
         case .action(let action, let isDown):
-            feedRepeater(id: id, action: action, pressed: isDown)
+            feedRepeater(id: id, action: action, pressed: isDown, at: now)
             perform(action, pressed: isDown)
         case .tap(let action):
             perform(action, pressed: true)
@@ -187,13 +189,14 @@ final class Engine {
 
     /// Single key combos repeat while held, like a real keyboard key.
     /// Sequences, modifier-only taps, clicks and URLs don't repeat.
-    private func feedRepeater(id: String, action: ButtonAction, pressed: Bool) {
+    private func feedRepeater(id: String, action: ButtonAction, pressed: Bool,
+                              at now: TimeInterval) {
         guard case .key(let raw) = action else { return }
         if pressed {
             guard let sequence = KeyComboParser.parseSequence(raw),
                   sequence.count == 1, let combo = sequence.first,
                   !KeyComboParser.isModifierOnly(combo) else { return }
-            repeater.keyDown(id: id, combo: combo, at: Date.timeIntervalSinceReferenceDate)
+            repeater.keyDown(id: id, combo: combo, at: now)
         } else {
             repeater.keyUp(id: id)
         }

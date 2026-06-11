@@ -49,15 +49,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         engine.onLayerHold = { [weak self, weak overlay] layerId in
             self?.layerHudTimer?.invalidate()
-            self?.layerHudTimer = nil
             guard let layerId else {
-                overlay?.hideLayerHud()
+                // the menu stays pickable for the grace window after release,
+                // so the HUD lingers just as long
+                self?.layerHudTimer = Timer.scheduledTimer(
+                    withTimeInterval: LayerRouter.graceWindow, repeats: false
+                ) { [weak overlay] _ in overlay?.hideLayerHud() }
                 return
             }
-            // brief delay so quick taps and Space flicks stay HUD-free
-            self?.layerHudTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) {
-                [weak overlay] _ in overlay?.showLayerHud(forLayer: layerId)
-            }
+            // same threshold as the router: HUD visible == menu mode
+            self?.layerHudTimer = Timer.scheduledTimer(
+                withTimeInterval: LayerRouter.holdThreshold, repeats: false
+            ) { [weak overlay] _ in overlay?.showLayerHud(forLayer: layerId) }
         }
 
         remap.onBegin = { [weak overlay] actionLabel in overlay?.show(.capture(actionLabel)) }
