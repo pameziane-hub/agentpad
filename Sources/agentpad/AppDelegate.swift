@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var overlay: MapOverlayController?
     private var remap: RemapCoordinator?
     private var trustPoller: Timer?
+    private var layerHudTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let promptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
@@ -43,6 +44,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 remap?.cancel()
             } else {
                 overlay?.toggleMap()
+            }
+        }
+
+        engine.onLayerHold = { [weak self, weak overlay] layerId in
+            self?.layerHudTimer?.invalidate()
+            self?.layerHudTimer = nil
+            guard let layerId else {
+                overlay?.hideLayerHud()
+                return
+            }
+            // brief delay so quick taps and Space flicks stay HUD-free
+            self?.layerHudTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) {
+                [weak overlay] _ in overlay?.showLayerHud(forLayer: layerId)
             }
         }
 

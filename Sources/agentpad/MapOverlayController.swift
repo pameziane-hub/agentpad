@@ -67,6 +67,55 @@ final class MapOverlayController {
         isShowingMap = false
     }
 
+    // MARK: - Hold-layer HUD
+
+    private var hudPanel: NSPanel?
+
+    /// Compact hold-HUD: one pill near the bottom of the screen listing a
+    /// layer's slots while the layer button is held. Suppressed while the
+    /// full map is open — the map already shows everything.
+    func showLayerHud(forLayer id: String) {
+        hideLayerHud()
+        guard !isShowingMap else { return }
+        let rows = MappingSummary.overlayRows(forLayer: id, config: store.config)
+        guard !rows.isEmpty else { return }
+
+        let line = rows.map { "\($0.button) \($0.action)" }.joined(separator: "   ·   ")
+        let label = NSTextField(labelWithString: line)
+        label.font = .monospacedSystemFont(ofSize: 13, weight: .medium)
+        label.textColor = .labelColor
+        label.sizeToFit()
+
+        let container = hudContainer(width: label.frame.width + 44,
+                                     height: label.frame.height + 24)
+        container.layer?.cornerRadius = container.frame.height / 2
+        label.setFrameOrigin(NSPoint(x: 22, y: 12))
+        container.addSubview(label)
+
+        let panel = NSPanel(contentRect: container.frame,
+                            styleMask: [.borderless, .nonactivatingPanel],
+                            backing: .buffered, defer: false)
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.level = .modalPanel
+        panel.ignoresMouseEvents = true
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.contentView = container
+        if let screen = NSScreen.main {
+            let frame = screen.visibleFrame
+            panel.setFrameOrigin(NSPoint(x: frame.midX - container.frame.width / 2,
+                                         y: frame.minY + 96))
+        }
+        panel.orderFrontRegardless()
+        hudPanel = panel
+    }
+
+    func hideLayerHud() {
+        hudPanel?.orderOut(nil)
+        hudPanel = nil
+    }
+
     // MARK: - Rendering
 
     private func buildContent(for mode: Mode) -> NSView {
