@@ -21,6 +21,20 @@ public final class ConfigStore {
         onChange?()
     }
 
+    public func setShotVariant(_ variant: String) {
+        guard config.fx.shotVariant != variant else { return }
+        config.fx.shotVariant = variant
+        ConfigLoader.write(config, to: url)
+        onChange?()
+    }
+
+    public func setReloadVariant(_ variant: String) {
+        guard config.fx.reloadVariant != variant else { return }
+        config.fx.reloadVariant = variant
+        ConfigLoader.write(config, to: url)
+        onChange?()
+    }
+
     public func swapBinding(_ first: String, _ second: String) {
         guard first != second else { return }
         let firstAction = config.buttons[first]

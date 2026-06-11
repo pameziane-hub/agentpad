@@ -69,9 +69,29 @@ extension ButtonAction: Codable {
 /// replace the built-in sounds.
 public struct FxConfig: Codable, Equatable {
     public var sounds: Bool
+    /// classic · laser · 8bit · silenced
+    public var shotVariant: String
+    /// clack · pop · thock · tick
+    public var reloadVariant: String
 
-    public init(sounds: Bool = false) {
+    public static let shotVariants = ["classic", "laser", "8bit", "silenced"]
+    public static let reloadVariants = ["clack", "pop", "thock", "tick"]
+
+    public init(sounds: Bool = false, shotVariant: String = "classic",
+                reloadVariant: String = "clack") {
         self.sounds = sounds
+        self.shotVariant = shotVariant
+        self.reloadVariant = reloadVariant
+    }
+
+    private enum CodingKeys: String, CodingKey { case sounds, shotVariant, reloadVariant }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        // every field optional: fx sections from older versions keep decoding
+        sounds = try container.decodeIfPresent(Bool.self, forKey: .sounds) ?? false
+        shotVariant = try container.decodeIfPresent(String.self, forKey: .shotVariant) ?? "classic"
+        reloadVariant = try container.decodeIfPresent(String.self, forKey: .reloadVariant) ?? "clack"
     }
 }
 

@@ -43,4 +43,31 @@ final class FxConfigTests: XCTestCase {
         XCTAssertTrue(store.config.fx.sounds)
         XCTAssertTrue(ConfigLoader.load(from: tempURL).fx.sounds)
     }
+
+    func testFxSectionWithoutVariantsDecodesWithDefaults() throws {
+        // an fx section written before sound variants existed
+        let legacy = #"{"sounds": true}"#
+        let fx = try JSONDecoder().decode(FxConfig.self, from: Data(legacy.utf8))
+        XCTAssertTrue(fx.sounds)
+        XCTAssertEqual(fx.shotVariant, "classic")
+        XCTAssertEqual(fx.reloadVariant, "clack")
+    }
+
+    func testVariantsRoundtrip() throws {
+        var config = Config.default
+        config.fx.shotVariant = "laser"
+        config.fx.reloadVariant = "thock"
+        let decoded = try JSONDecoder().decode(Config.self, from: JSONEncoder().encode(config))
+        XCTAssertEqual(decoded.fx.shotVariant, "laser")
+        XCTAssertEqual(decoded.fx.reloadVariant, "thock")
+    }
+
+    func testSetVariantsPersists() {
+        let store = ConfigStore(config: .default, url: tempURL)
+        store.setShotVariant("8bit")
+        store.setReloadVariant("pop")
+        let reloaded = ConfigLoader.load(from: tempURL)
+        XCTAssertEqual(reloaded.fx.shotVariant, "8bit")
+        XCTAssertEqual(reloaded.fx.reloadVariant, "pop")
+    }
 }

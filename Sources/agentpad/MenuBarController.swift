@@ -9,12 +9,31 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let engine: Engine
     private let store: ConfigStore
     private let onRemapRequest: (String) -> Void
+    private let onPreviewShot: (String) -> Void
+    private let onPreviewReload: (String) -> Void
+    private let hasCustomShot: Bool
+    private let hasCustomReload: Bool
     private var statusItem: NSStatusItem?
 
-    init(engine: Engine, store: ConfigStore, onRemapRequest: @escaping (String) -> Void) {
+    private static let shotNames = [
+        "classic": "Revolver", "laser": "Laser", "8bit": "8-Bit", "silenced": "Silenced",
+    ]
+    private static let reloadNames = [
+        "clack": "Clack", "pop": "Pop", "thock": "Thock", "tick": "Tick",
+    ]
+
+    init(engine: Engine, store: ConfigStore,
+         onRemapRequest: @escaping (String) -> Void,
+         onPreviewShot: @escaping (String) -> Void,
+         onPreviewReload: @escaping (String) -> Void,
+         hasCustomShot: Bool, hasCustomReload: Bool) {
         self.engine = engine
         self.store = store
         self.onRemapRequest = onRemapRequest
+        self.onPreviewShot = onPreviewShot
+        self.onPreviewReload = onPreviewReload
+        self.hasCustomShot = hasCustomShot
+        self.hasCustomReload = hasCustomReload
     }
 
     func install() {
@@ -79,12 +98,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         }
         menu.addItem(.separator())
 
-        let sounds = NSMenuItem(title: "Sound FX (shot & reload)",
-                                action: #selector(toggleSounds), keyEquivalent: "")
-        sounds.target = self
-        sounds.state = store.config.fx.sounds ? .on : .off
-        sounds.image = symbolImage(["speaker.wave.2.fill"])
-        menu.addItem(sounds)
+        menu.addItem(soundFxItem())
 
         let openConfig = NSMenuItem(title: "Open Config", action: #selector(openConfigFile), keyEquivalent: "")
         openConfig.target = self
@@ -96,6 +110,48 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                               keyEquivalent: "q")
         quit.image = symbolImage(["power"])
         menu.addItem(quit)
+    }
+
+    // MARK: - Sound FX submenu
+
+    private func soundFxItem() -> NSMenuItem {
+        let parent = NSMenuItem(title: "Sound FX", action: nil, keyEquivalent: "")
+        parent.image = symbolImage(["speaker.wave.2.fill"])
+        let submenu = NSMenu()
+
+        let enabled = NSMenuItem(title: "Enabled", action: #selector(toggleSounds), keyEquivalent: "")
+        enabled.target = self
+        enabled.state = store.config.fx.sounds ? .on : .off
+        submenu.addItem(enabled)
+
+        submenu.addItem(.separator())
+        submenu.addItem(sectionHeader("SHOT (on Return)"))
+        var shotVariants = FxConfig.shotVariants
+        if hasCustomShot { shotVariants.append("custom") }
+        for variant in shotVariants {
+            let title = variant == "custom" ? "Custom (shot.wav)" : Self.shotNames[variant] ?? variant
+            let item = NSMenuItem(title: title, action: #selector(selectShot(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = variant
+            item.state = store.config.fx.shotVariant == variant ? .on : .off
+            submenu.addItem(item)
+        }
+
+        submenu.addItem(.separator())
+        submenu.addItem(sectionHeader("RELOAD (on left click)"))
+        var reloadVariants = FxConfig.reloadVariants
+        if hasCustomReload { reloadVariants.append("custom") }
+        for variant in reloadVariants {
+            let title = variant == "custom" ? "Custom (reload.wav)" : Self.reloadNames[variant] ?? variant
+            let item = NSMenuItem(title: title, action: #selector(selectReload(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = variant
+            item.state = store.config.fx.reloadVariant == variant ? .on : .off
+            submenu.addItem(item)
+        }
+
+        parent.submenu = submenu
+        return parent
     }
 
     // MARK: - Header card
@@ -201,6 +257,16 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func toggleSounds() {
         store.setSounds(!store.config.fx.sounds)
+    }
+
+    @objc private func selectShot(_ sender: NSMenuItem) {
+        guard let variant = sender.representedObject as? String else { return }
+        onPreviewShot(variant)
+    }
+
+    @objc private func selectReload(_ sender: NSMenuItem) {
+        guard let variant = sender.representedObject as? String else { return }
+        onPreviewReload(variant)
     }
 
     @objc private func openConfigFile() {

@@ -69,7 +69,7 @@ The same overlay doubles as a cheat sheet: tap **View** anytime to see the full 
 
 ## Western mode 🔫
 
-Optional sound effects, off by default: firing a prompt with Return plays a synthesized revolver shot, left click plays a reload clack. Toggle via **Sound FX** in the menu. The sounds are generated in code (no audio assets); drop your own `shot.wav` / `reload.wav` into `~/.config/agentpad/` to replace them.
+Optional sound effects, off by default: firing a prompt with Return plays a shot, left click plays a reload. The **Sound FX** submenu in the dropdown toggles them and offers four flavors each — shot: Revolver / Laser / 8-Bit / Silenced, reload: Clack / Pop / Thock / Tick — selecting one previews it instantly. All sounds are synthesized in code (no audio assets); drop your own `shot.wav` / `reload.wav` into `~/.config/agentpad/` and a fifth "Custom" entry appears.
 
 ## Configuration
 

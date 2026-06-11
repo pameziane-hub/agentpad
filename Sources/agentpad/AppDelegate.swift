@@ -13,15 +13,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let trusted = AXIsProcessTrustedWithOptions([promptKey: true] as CFDictionary)
 
         let store = ConfigStore(config: ConfigLoader.load())
+        let soundFX = SoundFX()
         let engine = Engine(controller: ControllerService(),
                             output: OutputService(),
                             store: store,
+                            soundFX: soundFX,
                             accessibilityTrusted: trusted)
         let overlay = MapOverlayController(store: store)
         let remap = RemapCoordinator(store: store)
-        let menuBar = MenuBarController(engine: engine, store: store) { buttonId in
-            remap.begin(for: buttonId)
-        }
+        let menuBar = MenuBarController(
+            engine: engine, store: store,
+            onRemapRequest: { buttonId in remap.begin(for: buttonId) },
+            // selecting a variant saves it AND plays it once as a preview
+            onPreviewShot: { variant in
+                store.setShotVariant(variant)
+                soundFX.playShot(variant: variant)
+            },
+            onPreviewReload: { variant in
+                store.setReloadVariant(variant)
+                soundFX.playReload(variant: variant)
+            },
+            hasCustomShot: soundFX.hasCustomShot,
+            hasCustomReload: soundFX.hasCustomReload)
 
         engine.onStateChange = { [weak menuBar] in menuBar?.refresh() }
         engine.captureHandler = { id, pressed in remap.handle(id: id, pressed: pressed) }

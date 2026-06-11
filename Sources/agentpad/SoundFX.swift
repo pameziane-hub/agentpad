@@ -1,38 +1,63 @@
 import AVFoundation
 import AppKit
+import AgentpadCore
 
-/// Synthesized western-mode sounds — no bundled audio assets, so the repo
-/// stays license-clean. Users can replace them by dropping `shot.wav` /
-/// `reload.wav` into `~/.config/agentpad/`.
+/// Synthesized sound effects in four flavors per event — no bundled audio
+/// assets, so the repo stays license-clean. Users can replace them entirely
+/// by dropping `shot.wav` / `reload.wav` into `~/.config/agentpad/`.
 final class SoundFX {
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()
     private let format: AVAudioFormat
-    private var shotBuffer: AVAudioPCMBuffer?
-    private var reloadBuffer: AVAudioPCMBuffer?
+    private var shotBuffers: [String: AVAudioPCMBuffer] = [:]
+    private var reloadBuffers: [String: AVAudioPCMBuffer] = [:]
     private var customShot: NSSound?
     private var customReload: NSSound?
     private var started = false
 
     init() {
         format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)!
-        shotBuffer = Self.renderShot(format: format)
-        reloadBuffer = Self.renderReload(format: format)
+        shotBuffers = [
+            "classic": Self.renderClassicShot(format: format),
+            "laser": Self.renderLaserShot(format: format),
+            "8bit": Self.render8BitShot(format: format),
+            "silenced": Self.renderSilencedShot(format: format),
+        ].compactMapValues { $0 }
+        reloadBuffers = [
+            "clack": Self.renderClack(format: format),
+            "pop": Self.renderPop(format: format),
+            "thock": Self.renderThock(format: format),
+            "tick": Self.renderTick(format: format),
+        ].compactMapValues { $0 }
         customShot = Self.customSound(named: "shot")
         customReload = Self.customSound(named: "reload")
         engine.attach(player)
         engine.connect(player, to: engine.mainMixerNode, format: format)
     }
 
-    func playShot() { play(custom: customShot, buffer: shotBuffer) }
-    func playReload() { play(custom: customReload, buffer: reloadBuffer) }
+    /// True when the user dropped a shot.wav / reload.wav into the config dir.
+    var hasCustomShot: Bool { customShot != nil }
+    var hasCustomReload: Bool { customReload != nil }
 
-    private func play(custom: NSSound?, buffer: AVAudioPCMBuffer?) {
-        if let custom {
-            custom.stop()
-            custom.play()
+    func playShot(variant: String) {
+        if variant == "custom", let customShot {
+            customShot.stop()
+            customShot.play()
             return
         }
+        play(buffer: shotBuffers[variant] ?? shotBuffers["classic"])
+    }
+
+    func playReload(variant: String) {
+        if variant == "custom", let customReload {
+            customReload.stop()
+            customReload.play()
+            return
+        }
+        play(buffer: reloadBuffers[variant] ?? reloadBuffers["clack"])
+    }
+
+    private func play(buffer: AVAudioPCMBuffer?) {
         guard let buffer, ensureEngineRunning() else { return }
         player.scheduleBuffer(buffer, at: nil)
         player.play()
@@ -56,11 +81,10 @@ final class SoundFX {
         return NSSound(contentsOf: url, byReference: true)
     }
 
-    // MARK: - Synthesis
+    // MARK: - Shot variants
 
-    /// Gunshot: white-noise burst with a fast exponential decay over a low
-    /// sine "body", soft-clipped for punch.
-    private static func renderShot(format: AVAudioFormat) -> AVAudioPCMBuffer? {
+    /// Revolver: white-noise burst over a low sine body, soft-clipped.
+    private static func renderClassicShot(format: AVAudioFormat) -> AVAudioPCMBuffer? {
         render(duration: 0.30, format: format) { t in
             let noise = Float.random(in: -1...1) * exp(-t * 26)
             let body = sinf(2 * .pi * 95 * t) * exp(-t * 14) * 0.8
@@ -68,12 +92,74 @@ final class SoundFX {
         }
     }
 
-    /// Reload: two short filtered clicks ("clack-clack") 90 ms apart.
-    private static func renderReload(format: AVAudioFormat) -> AVAudioPCMBuffer? {
+    /// Laser: pew — linear downward chirp with a sparkle of noise.
+    private static func renderLaserShot(format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        let duration: Float = 0.22
+        let f0: Float = 1700, f1: Float = 160
+        return render(duration: Double(duration), format: format) { t in
+            let phase = 2 * .pi * (f0 * t + (f1 - f0) * t * t / (2 * duration))
+            let chirp = sinf(phase) * exp(-t * 16)
+            let sparkle = Float.random(in: -1...1) * exp(-t * 60) * 0.15
+            return (chirp + sparkle) * 0.7
+        }
+    }
+
+    /// 8-bit blaster: square wave stepping down an arcade arpeggio.
+    private static func render8BitShot(format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        let steps: [Float] = [880, 587, 392, 220, 110]
+        let stepLength: Float = 0.032
+        return render(duration: Double(stepLength) * Double(steps.count), format: format) { t in
+            let index = min(Int(t / stepLength), steps.count - 1)
+            let square: Float = sinf(2 * .pi * steps[index] * t) >= 0 ? 1 : -1
+            return square * 0.28 * exp(-t * 6)
+        }
+    }
+
+    /// Silenced: pfft — a muffled noise puff with a low thud.
+    private static func renderSilencedShot(format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        render(duration: 0.18, format: format) { t in
+            let puff = Float.random(in: -1...1) * exp(-t * 48) * 0.5
+            let thud = sinf(2 * .pi * 62 * t) * exp(-t * 30) * 0.6
+            return tanhf(puff + thud) * 0.6
+        }
+    }
+
+    // MARK: - Reload variants
+
+    /// Clack: two short mechanical clicks 90 ms apart.
+    private static func renderClack(format: AVAudioFormat) -> AVAudioPCMBuffer? {
         render(duration: 0.22, format: format) { t in
-            let first = clickEnvelope(t, onset: 0.0)
-            let second = clickEnvelope(t, onset: 0.09)
-            return (first + second) * 0.8
+            (clickEnvelope(t, onset: 0.0) + clickEnvelope(t, onset: 0.09)) * 0.8
+        }
+    }
+
+    /// Pop: a bubble pop — fast downward blip with a tiny attack click.
+    private static func renderPop(format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        let duration: Float = 0.07
+        let f0: Float = 520, f1: Float = 90
+        return render(duration: Double(duration), format: format) { t in
+            let phase = 2 * .pi * (f0 * t + (f1 - f0) * t * t / (2 * duration))
+            let blip = sinf(phase) * exp(-t * 50)
+            let attack = Float.random(in: -1...1) * exp(-t * 700) * 0.4
+            return (blip + attack) * 0.8
+        }
+    }
+
+    /// Thock: deep mechanical-keyboard bottom-out.
+    private static func renderThock(format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        render(duration: 0.09, format: format) { t in
+            let body = sinf(2 * .pi * 110 * t) * exp(-t * 70)
+            let tap = Float.random(in: -1...1) * exp(-t * 300) * 0.3
+            return tanhf((body + tap) * 1.6) * 0.8
+        }
+    }
+
+    /// Tick: a single bright, tiny click.
+    private static func renderTick(format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        render(duration: 0.03, format: format) { t in
+            let ping = sinf(2 * .pi * 3200 * t) * exp(-t * 250) * 0.5
+            let snap = Float.random(in: -1...1) * exp(-t * 500) * 0.5
+            return (ping + snap) * 0.7
         }
     }
 
