@@ -120,9 +120,13 @@ public enum ConfigLoader {
     }
 
     private static func writeDefault(to url: URL) {
+        write(.default, to: url)
+    }
+
+    public static func write(_ config: Config, to url: URL) {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard let data = try? encoder.encode(Config.default) else { return }
+        guard let data = try? encoder.encode(config) else { return }
         try? FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? data.write(to: url)
