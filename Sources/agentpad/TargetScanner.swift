@@ -9,20 +9,35 @@ import os.log
 /// queue — first contact with a "cold" app can block for ~30 ms (probed
 /// 2026-06-11), which must never happen on the 120 Hz tick.
 final class TargetScanner {
-    /// Latest clickable frame under the cursor, global CG coordinates.
-    /// Read from the main thread (the engine tick).
+    /// Latest clickable frame under or just ahead of the cursor, global CG
+    /// coordinates. Read from the main thread (the engine tick).
     private(set) var currentTarget: CGRect?
-
-    /// Engine flips this with stick activity; no movement = no scanning,
-    /// so idle agentpad never wakes other apps.
-    var isActive = false {
-        didSet { if !isActive { DispatchQueue.main.async { self.currentTarget = nil } } }
-    }
 
     private let log = Logger(subsystem: "com.paulameziane.agentpad", category: "magnet")
     private let queue = DispatchQueue(label: "com.paulameziane.agentpad.magnet", qos: .utility)
     private var timer: DispatchSourceTimer?
     private let systemWide = AXUIElementCreateSystemWide()
+    // touched on `queue` only
+    private var active = false
+    private var heading = CGVector.zero
+    /// How far ahead of the cursor the look-ahead probe sits, so targets
+    /// start pulling before the cursor arrives (steering's approach zone).
+    private static let lookahead: CGFloat = 44
+
+    /// Engine flips this with stick activity; no movement = no scanning,
+    /// so idle agentpad never wakes other apps.
+    func setActive(_ isActive: Bool) {
+        queue.async {
+            guard self.active != isActive else { return }
+            self.active = isActive
+            if !isActive { DispatchQueue.main.async { self.currentTarget = nil } }
+        }
+    }
+
+    /// Current movement direction (any scale), for the look-ahead probe.
+    func update(heading: CGVector) {
+        queue.async { self.heading = heading }
+    }
 
     /// Roles worth being sticky for. Containers and giant frames are
     /// filtered out — a 4096 pt AXGroup must never glue the cursor.
@@ -42,11 +57,21 @@ final class TargetScanner {
     }
 
     private func scan() {
-        guard isActive else { return }
+        guard active else { return }
         // CGEvent location is in global CG coordinates (top-left origin),
         // the same space AX hit-testing expects
         guard let cursor = CGEvent(source: nil)?.location else { return }
-        let frame = clickableFrame(at: cursor)
+        var frame = clickableFrame(at: cursor)
+        // nothing underneath: probe ahead in the movement direction, so
+        // the steering assist sees its target before the cursor lands
+        if frame == nil {
+            let length = hypot(heading.dx, heading.dy)
+            if length > 0 {
+                let probe = CGPoint(x: cursor.x + heading.dx / length * Self.lookahead,
+                                    y: cursor.y + heading.dy / length * Self.lookahead)
+                frame = clickableFrame(at: probe)
+            }
+        }
         DispatchQueue.main.async { self.currentTarget = frame }
     }
 

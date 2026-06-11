@@ -109,7 +109,7 @@ final class Engine {
             router.reset()
             repeater.reset()
             onLayerHold?(nil)
-            magnetScanner.isActive = false
+            magnetScanner.setActive(false)
         }
         log.info("state: \(String(describing: self.state), privacy: .public)")
         onStateChange?()
@@ -138,11 +138,12 @@ final class Engine {
                 log.debug("movement running: \(self.movingTicks, privacy: .public) ticks")
             }
         }
-        magnetScanner.isActive = stickWasMoving
+        magnetScanner.setActive(stickWasMoving)
         if move != .zero {
             // GameController y points up, screen y points down
             var dx = CGFloat(Double(move.x) * pointer.maxSpeed * dt)
             var dy = CGFloat(Double(-move.y) * pointer.maxSpeed * dt)
+            magnetScanner.update(heading: CGVector(dx: dx, dy: dy))
             let magnet = store.config.magnet
             if magnet.enabled, !output.isDragging,
                let cursor = CGEvent(source: nil)?.location {
