@@ -102,6 +102,14 @@ final class LayerRouterTests: XCTestCase {
         XCTAssertEqual(router.handle(id: "a", pressed: false, buttons: buttons), .nothing)
     }
 
+    func testExposesHeldLayerId() {
+        XCTAssertNil(router.heldLayer)
+        _ = router.handle(id: "leftTrigger", pressed: true, buttons: buttons)
+        XCTAssertEqual(router.heldLayer, "leftTrigger")
+        _ = router.handle(id: "leftTrigger", pressed: false, buttons: buttons)
+        XCTAssertNil(router.heldLayer)
+    }
+
     func testResetClearsHeldLayer() {
         _ = router.handle(id: "leftTrigger", pressed: true, buttons: buttons)
         router.reset()

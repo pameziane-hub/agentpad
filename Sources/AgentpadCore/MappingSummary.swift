@@ -30,6 +30,17 @@ public enum MappingSummary {
         }
     }
 
+    /// Short-label rows for the hold-HUD: just the overlay of one layer
+    /// button, e.g. ("A", "Cmd+Tab"), in display order.
+    public static func overlayRows(forLayer id: String, config: Config)
+        -> [(button: String, action: String)] {
+        guard case .layer(_, let overlay)? = config.buttons[id] else { return [] }
+        return displayOrder.compactMap { entry in
+            guard let action = overlay[entry.id] else { return nil }
+            return (button: entry.label, action: describe(action))
+        }
+    }
+
     public static func describe(_ action: ButtonAction) -> String {
         switch action {
         case .leftClick: return "Left Click"

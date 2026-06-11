@@ -58,6 +58,17 @@ final class MappingSummaryTests: XCTestCase {
         XCTAssertEqual(rows[ltIndex + 5].action, "Ctrl+Left")
     }
 
+    func testOverlayRowsUseShortLabelsForTheHud() {
+        let rows = MappingSummary.overlayRows(forLayer: "leftTrigger", config: .default)
+        XCTAssertEqual(rows.first?.button, "A")
+        XCTAssertEqual(rows.first?.action, "Cmd+Tab")
+        XCTAssertTrue(rows.contains(where: { $0.button == "D-Pad ←" && $0.action == "Ctrl+Left" }))
+    }
+
+    func testOverlayRowsEmptyForNonLayerButton() {
+        XCTAssertTrue(MappingSummary.overlayRows(forLayer: "a", config: .default).isEmpty)
+    }
+
     func testRowsSkipUnconfiguredButtons() {
         var config = Config.default
         config.buttons.removeValue(forKey: "x")

@@ -14,7 +14,7 @@ public struct LayerRouter {
         case nothing
     }
 
-    private var heldLayerId: String?
+    public private(set) var heldLayer: String?
     private var layerUsed = false
     /// Action chosen at press time, so a down/up pair never splits across
     /// two different actions when the layer state changes in between.
@@ -31,14 +31,14 @@ public struct LayerRouter {
     /// Clear all held state (on pause, disconnect, …) so no layer or
     /// press/release pair survives across an interruption.
     public mutating func reset() {
-        heldLayerId = nil
+        heldLayer = nil
         layerUsed = false
         pressActions = [:]
     }
 
     private mutating func handlePress(of id: String,
                                       buttons: [String: ButtonAction]) -> Event {
-        if let layerId = heldLayerId, layerId != id,
+        if let layerId = heldLayer, layerId != id,
            case .layer(_, let overlay)? = buttons[layerId],
            let overlayAction = overlay[id] {
             layerUsed = true
@@ -48,8 +48,8 @@ public struct LayerRouter {
         guard let action = buttons[id] else { return .nothing }
         if case .layer = action {
             // a second layer while one is held is ignored rather than stacked
-            guard heldLayerId == nil else { return .nothing }
-            heldLayerId = id
+            guard heldLayer == nil else { return .nothing }
+            heldLayer = id
             layerUsed = false
             return .nothing
         }
@@ -59,8 +59,8 @@ public struct LayerRouter {
 
     private mutating func handleRelease(of id: String,
                                         buttons: [String: ButtonAction]) -> Event {
-        if id == heldLayerId {
-            heldLayerId = nil
+        if id == heldLayer {
+            heldLayer = nil
             guard case .layer(let tap, _)? = buttons[id], let tap, !layerUsed else {
                 return .nothing
             }
