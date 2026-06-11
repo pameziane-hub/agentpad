@@ -28,6 +28,8 @@ final class Engine {
     var captureHandler: ((String, Bool) -> Bool)?
     /// HUD hook: fires with the layer button id on hold, nil on release.
     var onLayerHold: ((String?) -> Void)?
+    /// Console-style Start button: opens the status-bar menu.
+    var onStatusMenu: (() -> Void)?
 
     private var router = LayerRouter()
     private var repeater = KeyRepeater(
@@ -228,6 +230,8 @@ final class Engine {
         case .url(let urlString):
             guard pressed else { return }
             output.open(urlString: urlString)
+        case .statusMenu:
+            if pressed { onStatusMenu?() }
         case .pause, .layer:
             break
         }

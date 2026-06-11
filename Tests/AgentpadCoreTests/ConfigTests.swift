@@ -39,6 +39,19 @@ final class ConfigTests: XCTestCase {
         )
     }
 
+    func testDecodesStatusMenuAction() throws {
+        let action = try JSONDecoder().decode(
+            ButtonAction.self, from: Data(#"{"type":"statusMenu"}"#.utf8))
+        XCTAssertEqual(action, .statusMenu)
+        let data = try JSONEncoder().encode(ButtonAction.statusMenu)
+        XCTAssertEqual(try JSONDecoder().decode(ButtonAction.self, from: data), .statusMenu)
+    }
+
+    func testDefaultMenuButtonOpensTheStatusMenu() {
+        // console convention: Start opens the menu; Pause lives inside it
+        XCTAssertEqual(Config.default.buttons["menu"], .statusMenu)
+    }
+
     func testDecodesLayerAction() throws {
         let json = """
         {"type":"layer","tap":{"type":"rightClick"},

@@ -28,6 +28,9 @@ public indirect enum ButtonAction: Equatable {
     case rightClick
     /// Toggle all mapping on/off.
     case pause
+    /// Open the agentpad status-bar menu (console convention: Start opens
+    /// the menu), so everything stays configurable from the controller.
+    case statusMenu
     /// Hold-modifier (Steam-Input style layer shift): while held, buttons in
     /// `overlay` replace their base actions; press + release with no overlay
     /// use fires `tap` instead, so the button keeps a primary action.
@@ -46,6 +49,7 @@ extension ButtonAction: Codable {
         case "leftClick": self = .leftClick
         case "rightClick": self = .rightClick
         case "pause": self = .pause
+        case "statusMenu": self = .statusMenu
         case "layer":
             self = .layer(
                 tap: try container.decodeIfPresent(ButtonAction.self, forKey: .tap),
@@ -69,6 +73,7 @@ extension ButtonAction: Codable {
         case .leftClick: try container.encode("leftClick", forKey: .type)
         case .rightClick: try container.encode("rightClick", forKey: .type)
         case .pause: try container.encode("pause", forKey: .type)
+        case .statusMenu: try container.encode("statusMenu", forKey: .type)
         case .layer(let tap, let overlay):
             try container.encode("layer", forKey: .type)
             try container.encodeIfPresent(tap, forKey: .tap)
@@ -176,7 +181,8 @@ public struct Config: Codable, Equatable {
             "rightTrigger": .key("return"),
             "l3": .key("cmd+c"),
             "r3": .key("cmd+v"),
-            "menu": .pause,
+            // Start opens the menu, console style; Pause sits right inside it
+            "menu": .statusMenu,
         ])
 }
 

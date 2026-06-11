@@ -62,6 +62,7 @@ public enum MappingSummary {
         case .leftClick: return "Left Click"
         case .rightClick: return "Right Click"
         case .pause: return "Pause / Resume"
+        case .statusMenu: return "Open Menu"
         case .url(let url):
             // friendly label for the dictation app this project was built around
             return url.lowercased().hasPrefix("superwhisper://") ? "Superwhisper" : url

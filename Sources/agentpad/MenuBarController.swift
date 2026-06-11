@@ -11,6 +11,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let onRemapRequest: (String) -> Void
     private let onPreviewShot: (String) -> Void
     private let onPreviewReload: (String) -> Void
+    private let onAuditionShot: (String) -> Void
+    private let onAuditionReload: (String) -> Void
     private let hasCustomShot: Bool
     private let hasCustomReload: Bool
     private var statusItem: NSStatusItem?
@@ -26,12 +28,16 @@ final class MenuBarController: NSObject, NSMenuDelegate {
          onRemapRequest: @escaping (String) -> Void,
          onPreviewShot: @escaping (String) -> Void,
          onPreviewReload: @escaping (String) -> Void,
+         onAuditionShot: @escaping (String) -> Void,
+         onAuditionReload: @escaping (String) -> Void,
          hasCustomShot: Bool, hasCustomReload: Bool) {
         self.engine = engine
         self.store = store
         self.onRemapRequest = onRemapRequest
         self.onPreviewShot = onPreviewShot
         self.onPreviewReload = onPreviewReload
+        self.onAuditionShot = onAuditionShot
+        self.onAuditionReload = onAuditionReload
         self.hasCustomShot = hasCustomShot
         self.hasCustomReload = hasCustomReload
     }
@@ -112,79 +118,67 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(quit)
     }
 
+    /// Opens the dropdown programmatically — the controller's Start button.
+    func openMenu() {
+        statusItem?.button?.performClick(nil)
+    }
+
     // MARK: - Sound FX submenu
-    // Every row is a custom view: AppKit only auto-closes menus for native
-    // item clicks, so view-based rows let flavors be auditioned in a row
-    // without reopening the menu (same trick keeps the slider alive).
+    // Native rows so the D-Pad (arrow keys) can walk them. Auditioning
+    // happens on HIGHLIGHT (hover or arrows), macOS-font-menu style: walking
+    // the list plays each flavor, clicking commits the choice.
 
     private func soundFxItem() -> NSMenuItem {
         let parent = NSMenuItem(title: "Sound FX", action: nil, keyEquivalent: "")
         parent.image = symbolImage(["speaker.wave.2.fill"])
         let submenu = NSMenu()
+        submenu.delegate = self
 
-        let enabledRow = TryoutRow(title: "Enabled", checked: store.config.fx.sounds)
-        enabledRow.onClick = { [weak self, weak enabledRow] in
-            guard let self else { return }
-            let nowOn = !self.store.config.fx.sounds
-            self.store.setSounds(nowOn)
-            enabledRow?.checked = nowOn
-            // audible proof when switching on; silence means off
-            if nowOn { self.onPreviewReload(self.store.config.fx.reloadVariant) }
-        }
-        submenu.addItem(menuItem(for: enabledRow))
+        let enabled = NSMenuItem(title: "Enabled", action: #selector(toggleSounds), keyEquivalent: "")
+        enabled.target = self
+        enabled.state = store.config.fx.sounds ? .on : .off
+        submenu.addItem(enabled)
 
         submenu.addItem(.separator())
         submenu.addItem(sectionHeader("VOLUME"))
         submenu.addItem(volumeSliderItem())
 
         submenu.addItem(.separator())
-        submenu.addItem(sectionHeader("SHOT (on Return)"))
+        submenu.addItem(sectionHeader("SHOT (on Return) — walk the list to hear"))
         var shotVariants = FxConfig.shotVariants + FxConfig.systemVariants
         if hasCustomShot { shotVariants.append("custom") }
-        addVariantRows(to: submenu, variants: shotVariants, names: Self.shotNames,
-                       customTitle: "Custom (shot.wav)",
-                       current: store.config.fx.shotVariant,
-                       preview: onPreviewShot)
+        for variant in shotVariants {
+            let title = variant == "custom" ? "Custom (shot.wav)" : Self.shotNames[variant] ?? variant
+            let item = NSMenuItem(title: title, action: #selector(selectShot(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = variant
+            item.state = store.config.fx.shotVariant == variant ? .on : .off
+            submenu.addItem(item)
+        }
 
         submenu.addItem(.separator())
-        submenu.addItem(sectionHeader("RELOAD (on left click)"))
+        submenu.addItem(sectionHeader("RELOAD (on left click) — walk the list to hear"))
         var reloadVariants = FxConfig.reloadVariants + FxConfig.systemVariants
         if hasCustomReload { reloadVariants.append("custom") }
-        addVariantRows(to: submenu, variants: reloadVariants, names: Self.reloadNames,
-                       customTitle: "Custom (reload.wav)",
-                       current: store.config.fx.reloadVariant,
-                       preview: onPreviewReload)
+        for variant in reloadVariants {
+            let title = variant == "custom" ? "Custom (reload.wav)" : Self.reloadNames[variant] ?? variant
+            let item = NSMenuItem(title: title, action: #selector(selectReload(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = variant
+            item.state = store.config.fx.reloadVariant == variant ? .on : .off
+            submenu.addItem(item)
+        }
 
         parent.submenu = submenu
         return parent
     }
 
-    /// One group of audition rows; clicking moves the group's checkmark
-    /// live and plays the preview, the menu stays open throughout.
-    private func addVariantRows(to submenu: NSMenu, variants: [String],
-                                names: [String: String], customTitle: String,
-                                current: String, preview: @escaping (String) -> Void) {
-        let groupId = customTitle   // unique per group, never shown
-        for variant in variants {
-            let title = variant == "custom" ? customTitle : names[variant] ?? variant
-            let row = TryoutRow(title: title, checked: variant == current, groupId: groupId)
-            // sibling rows are found through the submenu at click time, so
-            // no row ever retains another (menus get rebuilt on every open)
-            row.onClick = { [weak submenu, weak row] in
-                submenu?.items.compactMap { $0.view as? TryoutRow }
-                    .filter { $0.groupId == groupId }
-                    .forEach { $0.checked = false }
-                row?.checked = true
-                preview(variant)
-            }
-            submenu.addItem(menuItem(for: row))
-        }
-    }
-
-    private func menuItem(for row: TryoutRow) -> NSMenuItem {
-        let item = NSMenuItem()
-        item.view = row
-        return item
+    /// Audition on highlight: arrows or hover play the flavor immediately,
+    /// without committing it.
+    func menu(_ menu: NSMenu, willHighlight item: NSMenuItem?) {
+        guard let item, let variant = item.representedObject as? String else { return }
+        if item.action == #selector(selectShot(_:))   { onAuditionShot(variant) }
+        if item.action == #selector(selectReload(_:)) { onAuditionReload(variant) }
     }
 
     /// Slider row: drag, release, hear the new level on the click sound.
@@ -312,6 +306,23 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         engine.togglePause()
     }
 
+    @objc private func toggleSounds() {
+        let nowOn = !store.config.fx.sounds
+        store.setSounds(nowOn)
+        // audible proof when switching on; silence means off
+        if nowOn { onPreviewReload(store.config.fx.reloadVariant) }
+    }
+
+    @objc private func selectShot(_ sender: NSMenuItem) {
+        guard let variant = sender.representedObject as? String else { return }
+        onPreviewShot(variant)
+    }
+
+    @objc private func selectReload(_ sender: NSMenuItem) {
+        guard let variant = sender.representedObject as? String else { return }
+        onPreviewReload(variant)
+    }
+
     @objc private func openConfigFile() {
         NSWorkspace.shared.open(ConfigLoader.defaultURL)
     }
@@ -319,61 +330,5 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func openAccessibilitySettings() {
         let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
         NSWorkspace.shared.open(url)
-    }
-}
-
-/// Menu row that survives its own click: AppKit only auto-closes menus for
-/// native items, so a view-based row keeps the menu open — exactly what
-/// auditioning sounds needs. Draws its own hover highlight and checkmark.
-private final class TryoutRow: NSView {
-    let groupId: String
-    var onClick: (() -> Void)?
-    var checked: Bool {
-        didSet { check.isHidden = !checked }
-    }
-
-    private let check = NSTextField(labelWithString: "✓")
-    private var hovered = false {
-        didSet { needsDisplay = true }
-    }
-
-    init(title: String, checked: Bool, groupId: String = "") {
-        self.checked = checked
-        self.groupId = groupId
-        super.init(frame: NSRect(x: 0, y: 0, width: 220, height: 22))
-
-        check.font = .systemFont(ofSize: 12, weight: .semibold)
-        check.frame = NSRect(x: 10, y: 3, width: 14, height: 16)
-        check.isHidden = !checked
-        addSubview(check)
-
-        let label = NSTextField(labelWithString: title)
-        label.font = .menuFont(ofSize: 13)
-        label.frame = NSRect(x: 28, y: 3, width: 184, height: 16)
-        addSubview(label)
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError() }
-
-    override func updateTrackingAreas() {
-        trackingAreas.forEach(removeTrackingArea)
-        addTrackingArea(NSTrackingArea(
-            rect: bounds, options: [.mouseEnteredAndExited, .activeAlways],
-            owner: self, userInfo: nil))
-        super.updateTrackingAreas()
-    }
-
-    override func mouseEntered(with event: NSEvent) { hovered = true }
-    override func mouseExited(with event: NSEvent) { hovered = false }
-    override func mouseUp(with event: NSEvent) { onClick?() }
-
-    override func draw(_ dirtyRect: NSRect) {
-        if hovered {
-            NSColor.selectedContentBackgroundColor.withAlphaComponent(0.25).setFill()
-            NSBezierPath(roundedRect: bounds.insetBy(dx: 5, dy: 0),
-                         xRadius: 4, yRadius: 4).fill()
-        }
-        super.draw(dirtyRect)
     }
 }

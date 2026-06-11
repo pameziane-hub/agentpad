@@ -34,10 +34,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 store.setReloadVariant(variant)
                 soundFX.playReload(variant: variant, volume: store.config.fx.volume)
             },
+            // play-only: walking the menu auditions without committing
+            onAuditionShot: { variant in
+                soundFX.playShot(variant: variant, volume: store.config.fx.volume)
+            },
+            onAuditionReload: { variant in
+                soundFX.playReload(variant: variant, volume: store.config.fx.volume)
+            },
             hasCustomShot: soundFX.hasCustomShot,
             hasCustomReload: soundFX.hasCustomReload)
 
         engine.onStateChange = { [weak menuBar] in menuBar?.refresh() }
+        engine.onStatusMenu = { [weak menuBar] in menuBar?.openMenu() }
         engine.captureHandler = { id, pressed in remap.handle(id: id, pressed: pressed) }
         engine.onViewButton = { [weak overlay, weak remap] in
             if remap?.isCapturing == true {

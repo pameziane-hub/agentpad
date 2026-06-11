@@ -1,10 +1,12 @@
 import AppKit
 import CoreGraphics
 import AgentpadCore
+import os.log
 
 /// Synthesizes mouse and keyboard events via CGEvent. Requires the
 /// Accessibility permission; without it, posted events are silently dropped.
 final class OutputService {
+    private let log = Logger(subsystem: "com.paulameziane.agentpad", category: "output")
     private let source = CGEventSource(stateID: .hidSystemState)
     private var leftButtonHeld = false
     private var dragLatched = false
@@ -63,10 +65,13 @@ final class OutputService {
         leftButtonHeld = true
         dragLatched = false
         pendingDrag = .zero
+        // diagnosis for "weak click" reports: count escalation and position
+        log.debug("leftDown clicks=\(self.clickCount, privacy: .public) at \(Int(location.x), privacy: .public),\(Int(location.y), privacy: .public) front=\(NSWorkspace.shared.frontmostApplication?.localizedName ?? "?", privacy: .public)")
         postMouse(.leftMouseDown, button: .left, clickCount: clickCount)
     }
 
     func leftUp() {
+        log.debug("leftUp clicks=\(self.clickCount, privacy: .public) dragged=\(self.dragLatched, privacy: .public)")
         leftButtonHeld = false
         dragLatched = false
         pendingDrag = .zero
