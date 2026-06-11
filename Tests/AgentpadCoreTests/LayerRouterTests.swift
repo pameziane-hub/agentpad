@@ -132,13 +132,39 @@ final class LayerRouterTests: XCTestCase {
                        .action(.key("cmd+tab"), pressed: false))
     }
 
-    func testMenuPickClosesTheMenu() {
+    func testMenuStaysOpenAcrossPicksSoSlotsCanBeTried() {
         _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
         _ = router.handle(id: "leftTrigger", pressed: false, at: 0.5, buttons: buttons)
         _ = router.handle(id: "a", pressed: true, at: 1.0, buttons: buttons)
         _ = router.handle(id: "a", pressed: false, at: 1.1, buttons: buttons)
+        XCTAssertEqual(router.hudLayer, "leftTrigger")
+        // a second pick still comes from the menu, not the base mapping
+        XCTAssertEqual(router.handle(id: "a", pressed: true, at: 1.5, buttons: buttons),
+                       .action(.key("cmd+tab"), pressed: true))
+        XCTAssertEqual(router.handle(id: "dpadLeft", pressed: true, at: 2.0, buttons: buttons),
+                       .action(.key("ctrl+left"), pressed: true))
+    }
+
+    func testEveryPickRestartsTheMenuTimeout() {
+        _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
+        _ = router.handle(id: "leftTrigger", pressed: false, at: 0.5, buttons: buttons)
+        _ = router.handle(id: "a", pressed: true, at: 5.0, buttons: buttons)
+        _ = router.handle(id: "a", pressed: false, at: 5.1, buttons: buttons)
+        // 6 s from the pick, not from the menu opening
+        XCTAssertFalse(router.expireMenu(at: 10.9))
+        XCTAssertTrue(router.expireMenu(at: 11.1))
+    }
+
+    func testLayerTapWhileMenuOpenJustClosesIt() {
+        _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
+        _ = router.handle(id: "leftTrigger", pressed: false, at: 0.5, buttons: buttons)
+        // tapping the layer button again closes the menu — no right click,
+        // no fresh hold, the whole press/release pair is consumed
+        XCTAssertEqual(router.handle(id: "leftTrigger", pressed: true, at: 1.0, buttons: buttons),
+                       .nothing)
         XCTAssertNil(router.hudLayer)
-        // second press is back to base
+        XCTAssertEqual(router.handle(id: "leftTrigger", pressed: false, at: 1.1, buttons: buttons),
+                       .nothing)
         XCTAssertEqual(router.handle(id: "a", pressed: true, at: 1.5, buttons: buttons),
                        .action(.leftClick, pressed: true))
     }
@@ -170,17 +196,6 @@ final class LayerRouterTests: XCTestCase {
         XCTAssertNil(router.hudLayer)
         XCTAssertEqual(router.handle(id: "a", pressed: true, at: 0.15, buttons: buttons),
                        .action(.leftClick, pressed: true))
-    }
-
-    func testLayerPressWhileMenuOpenStartsAFreshHold() {
-        _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
-        _ = router.handle(id: "leftTrigger", pressed: false, at: 0.5, buttons: buttons)
-        XCTAssertEqual(router.handle(id: "leftTrigger", pressed: true, at: 1.0, buttons: buttons),
-                       .nothing)
-        XCTAssertEqual(router.hudLayer, "leftTrigger")
-        // a short release of that fresh hold taps as usual
-        XCTAssertEqual(router.handle(id: "leftTrigger", pressed: false, at: 1.1, buttons: buttons),
-                       .tap(.rightClick))
     }
 
     func testHudLayerTracksHeldLayerToo() {

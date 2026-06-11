@@ -30,13 +30,29 @@ public enum MappingSummary {
         }
     }
 
+    /// Plain words for the hold-HUD: the menu should say what a slot DOES,
+    /// not its key combo. Unknown combos fall back to their key names.
+    static let friendlyNames: [String: String] = [
+        "cmd+tab": "Last App",
+        "delete": "Delete",
+        "cmd+z": "Undo",
+        "ctrl+c": "Interrupt",
+        "cmd+a": "Select All",
+        "ctrl+left": "Space ←",
+        "ctrl+right": "Space →",
+    ]
+
     /// Short-label rows for the hold-HUD: just the overlay of one layer
-    /// button, e.g. ("A", "Cmd+Tab"), in display order.
+    /// button, e.g. ("A", "Last App"), in display order.
     public static func overlayRows(forLayer id: String, config: Config)
         -> [(button: String, action: String)] {
         guard case .layer(_, let overlay)? = config.buttons[id] else { return [] }
         return displayOrder.compactMap { entry in
             guard let action = overlay[entry.id] else { return nil }
+            if case .key(let raw) = action,
+               let friendly = friendlyNames[raw.lowercased()] {
+                return (button: entry.label, action: friendly)
+            }
             return (button: entry.label, action: describe(action))
         }
     }

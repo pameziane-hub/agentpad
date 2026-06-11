@@ -168,6 +168,7 @@ public struct Config: Codable, Equatable {
                 "b": .key("delete"),
                 "x": .key("cmd+z"),
                 "y": .key("ctrl+c"),
+                "dpadUp": .key("cmd+a"),
                 "dpadLeft": .key("ctrl+left"),
                 "dpadRight": .key("ctrl+right"),
             ]),

@@ -119,7 +119,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         parent.image = symbolImage(["speaker.wave.2.fill"])
         let submenu = NSMenu()
 
-        let enabled = NSMenuItem(title: "Enabled", action: #selector(toggleSounds), keyEquivalent: "")
+        let enabled = NSMenuItem(title: "Enabled", action: #selector(toggleSounds(_:)), keyEquivalent: "")
         enabled.target = self
         enabled.state = store.config.fx.sounds ? .on : .off
         submenu.addItem(enabled)
@@ -283,8 +283,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         engine.togglePause()
     }
 
-    @objc private func toggleSounds() {
-        store.setSounds(!store.config.fx.sounds)
+    @objc private func toggleSounds(_ sender: NSMenuItem) {
+        let nowOn = !store.config.fx.sounds
+        store.setSounds(nowOn)
+        // audible proof when switching on; silence means off
+        if nowOn { onPreviewReload(store.config.fx.reloadVariant) }
     }
 
     @objc private func selectShot(_ sender: NSMenuItem) {

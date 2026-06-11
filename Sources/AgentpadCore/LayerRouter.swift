@@ -75,15 +75,23 @@ public struct LayerRouter {
             pressActions[id] = overlayAction
             return .action(overlayAction, pressed: true)
         }
-        // an open menu: the next press decides — a slot picks from the
-        // menu, anything else closes it and acts normally below
+        // an open menu: slots pick from it and KEEP it open (so the slots
+        // can be tried in a row), tapping the layer button again closes it,
+        // anything else closes it and acts normally below
         if let menuId = openMenu {
-            openMenu = nil
+            if id == menuId {
+                openMenu = nil
+                // the matching release finds no held layer and no press
+                // action, so the whole close-press is consumed silently
+                return .nothing
+            }
             if case .layer(_, let overlay)? = buttons[menuId],
                let overlayAction = overlay[id] {
+                menuOpenedAt = time   // every pick restarts the timeout
                 pressActions[id] = overlayAction
                 return .action(overlayAction, pressed: true)
             }
+            openMenu = nil
         }
         guard let action = buttons[id] else { return .nothing }
         if case .layer = action {

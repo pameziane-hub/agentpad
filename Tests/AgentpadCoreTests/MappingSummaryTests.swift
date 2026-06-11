@@ -39,7 +39,7 @@ final class MappingSummaryTests: XCTestCase {
             "A", "B", "X", "Y",
             "D-Pad ↑", "D-Pad ↓", "D-Pad ←", "D-Pad →",
             "LT", "LT + A", "LT + B", "LT + X", "LT + Y",
-            "LT + D-Pad ←", "LT + D-Pad →",
+            "LT + D-Pad ↑", "LT + D-Pad ←", "LT + D-Pad →",
             "RT", "LB", "RB", "L3", "R3", "Menu",
         ])
     }
@@ -54,15 +54,36 @@ final class MappingSummaryTests: XCTestCase {
         XCTAssertEqual(rows[ltIndex + 2].action, "Delete")
         XCTAssertEqual(rows[ltIndex + 3].action, "Cmd+Z")
         XCTAssertEqual(rows[ltIndex + 4].action, "Ctrl+C")
-        XCTAssertEqual(rows[ltIndex + 5].button, "LT + D-Pad ←")
-        XCTAssertEqual(rows[ltIndex + 5].action, "Ctrl+Left")
+        XCTAssertEqual(rows[ltIndex + 5].button, "LT + D-Pad ↑")
+        XCTAssertEqual(rows[ltIndex + 5].action, "Cmd+A")
+        XCTAssertEqual(rows[ltIndex + 6].button, "LT + D-Pad ←")
+        XCTAssertEqual(rows[ltIndex + 6].action, "Ctrl+Left")
     }
 
     func testOverlayRowsUseShortLabelsForTheHud() {
         let rows = MappingSummary.overlayRows(forLayer: "leftTrigger", config: .default)
         XCTAssertEqual(rows.first?.button, "A")
-        XCTAssertEqual(rows.first?.action, "Cmd+Tab")
-        XCTAssertTrue(rows.contains(where: { $0.button == "D-Pad ←" && $0.action == "Ctrl+Left" }))
+        XCTAssertTrue(rows.contains(where: { $0.button == "D-Pad ←" }))
+    }
+
+    func testOverlayRowsSpeakPlainWordsNotKeyCombos() {
+        // the HUD is a menu for humans: say what a slot does, not its combo
+        let rows = MappingSummary.overlayRows(forLayer: "leftTrigger", config: .default)
+        let byButton = Dictionary(uniqueKeysWithValues: rows.map { ($0.button, $0.action) })
+        XCTAssertEqual(byButton["A"], "Last App")
+        XCTAssertEqual(byButton["B"], "Delete")
+        XCTAssertEqual(byButton["X"], "Undo")
+        XCTAssertEqual(byButton["Y"], "Interrupt")
+        XCTAssertEqual(byButton["D-Pad ↑"], "Select All")
+        XCTAssertEqual(byButton["D-Pad ←"], "Space ←")
+        XCTAssertEqual(byButton["D-Pad →"], "Space →")
+    }
+
+    func testUnknownCombosFallBackToTheirKeyNamesInTheHud() {
+        var config = Config.default
+        config.buttons["leftTrigger"] = .layer(tap: nil, overlay: ["a": .key("cmd+shift+s")])
+        let rows = MappingSummary.overlayRows(forLayer: "leftTrigger", config: config)
+        XCTAssertEqual(rows.first?.action, "Cmd+Shift+S")
     }
 
     func testOverlayRowsEmptyForNonLayerButton() {
