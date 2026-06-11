@@ -7,13 +7,33 @@ import AgentpadCore
 final class OutputService {
     private let source = CGEventSource(stateID: .hidSystemState)
     private var leftButtonHeld = false
+    private var dragLatched = false
+    private var pendingDrag = CGVector.zero
+    /// Movement below this while the button is held is swallowed, so a click
+    /// with a slightly deflected stick stays a click instead of drag-selecting.
+    private let dragThreshold: CGFloat = 6
 
     // MARK: - Mouse
 
     func moveCursor(dx: CGFloat, dy: CGFloat) {
+        if leftButtonHeld, !dragLatched {
+            pendingDrag.dx += dx
+            pendingDrag.dy += dy
+            let distance = (pendingDrag.dx * pendingDrag.dx + pendingDrag.dy * pendingDrag.dy).squareRoot()
+            guard distance > dragThreshold else { return }
+            // intent is clear: start the drag with the buffered movement
+            dragLatched = true
+            applyMove(dx: pendingDrag.dx, dy: pendingDrag.dy)
+            pendingDrag = .zero
+            return
+        }
+        applyMove(dx: dx, dy: dy)
+    }
+
+    private func applyMove(dx: CGFloat, dy: CGFloat) {
         let current = currentLocation()
         let target = clampToDisplays(CGPoint(x: current.x + dx, y: current.y + dy))
-        // while the trigger holds the left button, movement must be a drag
+        // while the click button is held, movement must be a drag
         let type: CGEventType = leftButtonHeld ? .leftMouseDragged : .mouseMoved
         CGEvent(mouseEventSource: source, mouseType: type,
                 mouseCursorPosition: target, mouseButton: .left)?
@@ -22,11 +42,15 @@ final class OutputService {
 
     func leftDown() {
         leftButtonHeld = true
+        dragLatched = false
+        pendingDrag = .zero
         postMouse(.leftMouseDown, button: .left)
     }
 
     func leftUp() {
         leftButtonHeld = false
+        dragLatched = false
+        pendingDrag = .zero
         postMouse(.leftMouseUp, button: .left)
     }
 
