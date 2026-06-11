@@ -8,6 +8,8 @@ import os.log
 final class OutputService {
     private let log = Logger(subsystem: "com.paulameziane.agentpad", category: "output")
     private let source = CGEventSource(stateID: .hidSystemState)
+    /// The magnet must never fight a drag (text selection!).
+    var isDragging: Bool { leftButtonHeld }
     private var leftButtonHeld = false
     private var dragLatched = false
     private var pendingDrag = CGVector.zero

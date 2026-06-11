@@ -16,6 +16,7 @@ final class Engine {
     private let output: OutputService
     private let store: ConfigStore
     private let soundFX: SoundFX
+    private let magnetScanner: TargetScanner
     private var accessibilityTrusted: Bool
 
     private(set) var state: State = .noController
@@ -45,11 +46,12 @@ final class Engine {
     private var lastTick = Date.timeIntervalSinceReferenceDate
 
     init(controller: ControllerService, output: OutputService, store: ConfigStore,
-         soundFX: SoundFX, accessibilityTrusted: Bool) {
+         soundFX: SoundFX, magnetScanner: TargetScanner, accessibilityTrusted: Bool) {
         self.controller = controller
         self.output = output
         self.store = store
         self.soundFX = soundFX
+        self.magnetScanner = magnetScanner
         self.accessibilityTrusted = accessibilityTrusted
     }
 
@@ -102,11 +104,12 @@ final class Engine {
             state = .active
         }
         if state != .active {
-            // no ghost layer or running repeat may survive a pause,
-            // disconnect, or permission loss
+            // no ghost layer, running repeat, or scanning may survive a
+            // pause, disconnect, or permission loss
             router.reset()
             repeater.reset()
             onLayerHold?(nil)
+            magnetScanner.isActive = false
         }
         log.info("state: \(String(describing: self.state), privacy: .public)")
         onStateChange?()
@@ -135,10 +138,23 @@ final class Engine {
                 log.debug("movement running: \(self.movingTicks, privacy: .public) ticks")
             }
         }
+        magnetScanner.isActive = stickWasMoving
         if move != .zero {
             // GameController y points up, screen y points down
-            output.moveCursor(dx: CGFloat(Double(move.x) * pointer.maxSpeed * dt),
-                              dy: CGFloat(Double(-move.y) * pointer.maxSpeed * dt))
+            var dx = CGFloat(Double(move.x) * pointer.maxSpeed * dt)
+            var dy = CGFloat(Double(-move.y) * pointer.maxSpeed * dt)
+            let magnet = store.config.magnet
+            if magnet.enabled, !output.isDragging,
+               let cursor = CGEvent(source: nil)?.location {
+                let speed = hypot(dx, dy) / CGFloat(dt)
+                let adjusted = MagnetField.adjust(
+                    movement: CGVector(dx: dx, dy: dy), cursor: cursor,
+                    target: magnetScanner.currentTarget,
+                    strength: magnet.strength, speed: speed)
+                dx = adjusted.dx
+                dy = adjusted.dy
+            }
+            output.moveCursor(dx: dx, dy: dy)
         }
 
         let scrollConfig = store.config.scroll

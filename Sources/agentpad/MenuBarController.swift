@@ -106,6 +106,13 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(soundFxItem())
 
+        let magnet = NSMenuItem(title: "Magnet Cursor",
+                                action: #selector(toggleMagnet), keyEquivalent: "")
+        magnet.target = self
+        magnet.state = store.config.magnet.enabled ? .on : .off
+        magnet.image = symbolImage(["dot.scope", "scope", "target"])
+        menu.addItem(magnet)
+
         let openConfig = NSMenuItem(title: "Open Config", action: #selector(openConfigFile), keyEquivalent: "")
         openConfig.target = self
         openConfig.image = symbolImage(["gearshape"])
@@ -321,6 +328,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func selectReload(_ sender: NSMenuItem) {
         guard let variant = sender.representedObject as? String else { return }
         onPreviewReload(variant)
+    }
+
+    @objc private func toggleMagnet() {
+        store.setMagnetEnabled(!store.config.magnet.enabled)
     }
 
     @objc private func openConfigFile() {

@@ -1,0 +1,95 @@
+import AppKit
+import ApplicationServices
+import AgentpadCore
+import os.log
+
+/// Feeds the magnet: every ~100 ms while the stick is moving, asks the
+/// Accessibility API what clickable element sits under the cursor and
+/// publishes its frame to the main thread. All AX calls stay on one serial
+/// queue — first contact with a "cold" app can block for ~30 ms (probed
+/// 2026-06-11), which must never happen on the 120 Hz tick.
+final class TargetScanner {
+    /// Latest clickable frame under the cursor, global CG coordinates.
+    /// Read from the main thread (the engine tick).
+    private(set) var currentTarget: CGRect?
+
+    /// Engine flips this with stick activity; no movement = no scanning,
+    /// so idle agentpad never wakes other apps.
+    var isActive = false {
+        didSet { if !isActive { DispatchQueue.main.async { self.currentTarget = nil } } }
+    }
+
+    private let log = Logger(subsystem: "com.paulameziane.agentpad", category: "magnet")
+    private let queue = DispatchQueue(label: "com.paulameziane.agentpad.magnet", qos: .utility)
+    private var timer: DispatchSourceTimer?
+    private let systemWide = AXUIElementCreateSystemWide()
+
+    /// Roles worth being sticky for. Containers and giant frames are
+    /// filtered out — a 4096 pt AXGroup must never glue the cursor.
+    private static let clickableRoles: Set<String> = [
+        "AXButton", "AXMenuBarItem", "AXMenuItem", "AXMenuButton",
+        "AXLink", "AXCheckBox", "AXRadioButton", "AXPopUpButton",
+        "AXTextField", "AXComboBox",
+    ]
+    private static let maxTargetSize = CGSize(width: 320, height: 120)
+
+    func start() {
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(deadline: .now(), repeating: .milliseconds(100))
+        timer.setEventHandler { [weak self] in self?.scan() }
+        timer.resume()
+        self.timer = timer
+    }
+
+    private func scan() {
+        guard isActive else { return }
+        // CGEvent location is in global CG coordinates (top-left origin),
+        // the same space AX hit-testing expects
+        guard let cursor = CGEvent(source: nil)?.location else { return }
+        let frame = clickableFrame(at: cursor)
+        DispatchQueue.main.async { self.currentTarget = frame }
+    }
+
+    private func clickableFrame(at point: CGPoint) -> CGRect? {
+        var element: AXUIElement?
+        guard AXUIElementCopyElementAtPosition(
+                systemWide, Float(point.x), Float(point.y), &element) == .success,
+              var element else { return nil }
+
+        // the menu bar hit-tests as its container; one drill-down finds
+        // the actual item under the point
+        if role(of: element) == "AXMenuBar",
+           let item = menuBarItem(in: element, at: point) {
+            element = item
+        }
+        guard let role = role(of: element),
+              Self.clickableRoles.contains(role),
+              let frame = frame(of: element),
+              frame.width <= Self.maxTargetSize.width,
+              frame.height <= Self.maxTargetSize.height else { return nil }
+        return frame
+    }
+
+    private func menuBarItem(in menuBar: AXUIElement, at point: CGPoint) -> AXUIElement? {
+        var childrenRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+                menuBar, kAXChildrenAttribute as CFString, &childrenRef) == .success,
+              let children = childrenRef as? [AXUIElement] else { return nil }
+        return children.first { frame(of: $0)?.contains(point) == true }
+    }
+
+    private func role(of element: AXUIElement) -> String? {
+        var value: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &value)
+        return value as? String
+    }
+
+    private func frame(of element: AXUIElement) -> CGRect? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, "AXFrame" as CFString, &value) == .success,
+              let value, CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
+        var rect = CGRect.zero
+        guard AXValueGetValue(value as! AXValue, .cgRect, &rect) else { return nil }
+        return rect
+    }
+}

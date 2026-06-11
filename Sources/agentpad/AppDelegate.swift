@@ -15,10 +15,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let store = ConfigStore(config: ConfigLoader.load())
         let soundFX = SoundFX()
+        let magnetScanner = TargetScanner()
+        magnetScanner.start()
         let engine = Engine(controller: ControllerService(),
                             output: OutputService(),
                             store: store,
                             soundFX: soundFX,
+                            magnetScanner: magnetScanner,
                             accessibilityTrusted: trusted)
         let overlay = MapOverlayController(store: store)
         let remap = RemapCoordinator(store: store)
