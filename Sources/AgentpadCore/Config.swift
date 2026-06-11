@@ -82,22 +82,29 @@ extension ButtonAction: Codable {
 /// replace the built-in sounds.
 public struct FxConfig: Codable, Equatable {
     public var sounds: Bool
-    /// classic · laser · 8bit · silenced
+    /// classic · laser · 8bit · silenced — or a system sound name
     public var shotVariant: String
-    /// clack · pop · thock · tick
+    /// clack · pop · thock · tick — or a system sound name
     public var reloadVariant: String
+    /// Playback volume for all FX, 0…1.
+    public var volume: Float
 
     public static let shotVariants = ["classic", "laser", "8bit", "silenced"]
     public static let reloadVariants = ["clack", "pop", "thock", "tick"]
+    /// Built-in macOS alert sounds offered for both events: professionally
+    /// mastered, played by name, nothing bundled into the repo. Capitalized
+    /// names double as menu titles and never collide with the synth list.
+    public static let systemVariants = ["Tink", "Glass", "Morse", "Purr", "Hero", "Submarine"]
 
     public init(sounds: Bool = false, shotVariant: String = "classic",
-                reloadVariant: String = "clack") {
+                reloadVariant: String = "clack", volume: Float = 0.5) {
         self.sounds = sounds
         self.shotVariant = shotVariant
         self.reloadVariant = reloadVariant
+        self.volume = volume
     }
 
-    private enum CodingKeys: String, CodingKey { case sounds, shotVariant, reloadVariant }
+    private enum CodingKeys: String, CodingKey { case sounds, shotVariant, reloadVariant, volume }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -105,6 +112,8 @@ public struct FxConfig: Codable, Equatable {
         sounds = try container.decodeIfPresent(Bool.self, forKey: .sounds) ?? false
         shotVariant = try container.decodeIfPresent(String.self, forKey: .shotVariant) ?? "classic"
         reloadVariant = try container.decodeIfPresent(String.self, forKey: .reloadVariant) ?? "clack"
+        let rawVolume = try container.decodeIfPresent(Float.self, forKey: .volume) ?? 0.5
+        volume = min(max(rawVolume, 0), 1)
     }
 }
 

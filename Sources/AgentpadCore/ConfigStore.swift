@@ -35,6 +35,14 @@ public final class ConfigStore {
         onChange?()
     }
 
+    public func setVolume(_ volume: Float) {
+        let clamped = min(max(volume, 0), 1)
+        guard config.fx.volume != clamped else { return }
+        config.fx.volume = clamped
+        ConfigLoader.write(config, to: url)
+        onChange?()
+    }
+
     public func swapBinding(_ first: String, _ second: String) {
         guard first != second else { return }
         let firstAction = config.buttons[first]

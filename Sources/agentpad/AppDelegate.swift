@@ -28,11 +28,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // selecting a variant saves it AND plays it once as a preview
             onPreviewShot: { variant in
                 store.setShotVariant(variant)
-                soundFX.playShot(variant: variant)
+                soundFX.playShot(variant: variant, volume: store.config.fx.volume)
             },
             onPreviewReload: { variant in
                 store.setReloadVariant(variant)
-                soundFX.playReload(variant: variant)
+                soundFX.playReload(variant: variant, volume: store.config.fx.volume)
             },
             hasCustomShot: soundFX.hasCustomShot,
             hasCustomReload: soundFX.hasCustomReload)

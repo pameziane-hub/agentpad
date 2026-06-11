@@ -211,7 +211,8 @@ final class Engine {
         switch action {
         case .leftClick:
             if pressed, store.config.fx.sounds {
-                soundFX.playReload(variant: store.config.fx.reloadVariant)
+                soundFX.playReload(variant: store.config.fx.reloadVariant,
+                                   volume: store.config.fx.volume)
             }
             pressed ? output.leftDown() : output.leftUp()
         case .rightClick:
@@ -220,7 +221,8 @@ final class Engine {
             guard pressed, let sequence = KeyComboParser.parseSequence(raw) else { return }
             // western mode: Return fires the configured shot sound
             if store.config.fx.sounds, sequence.contains(where: { $0.keyCode == 36 }) {
-                soundFX.playShot(variant: store.config.fx.shotVariant)
+                soundFX.playShot(variant: store.config.fx.shotVariant,
+                                 volume: store.config.fx.volume)
             }
             output.post(sequence: sequence)
         case .url(let urlString):

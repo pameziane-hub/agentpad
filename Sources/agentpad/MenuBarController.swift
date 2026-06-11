@@ -125,8 +125,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         submenu.addItem(enabled)
 
         submenu.addItem(.separator())
+        submenu.addItem(sectionHeader("VOLUME"))
+        submenu.addItem(volumeSliderItem())
+
+        submenu.addItem(.separator())
         submenu.addItem(sectionHeader("SHOT (on Return)"))
-        var shotVariants = FxConfig.shotVariants
+        var shotVariants = FxConfig.shotVariants + FxConfig.systemVariants
         if hasCustomShot { shotVariants.append("custom") }
         for variant in shotVariants {
             let title = variant == "custom" ? "Custom (shot.wav)" : Self.shotNames[variant] ?? variant
@@ -139,7 +143,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
         submenu.addItem(.separator())
         submenu.addItem(sectionHeader("RELOAD (on left click)"))
-        var reloadVariants = FxConfig.reloadVariants
+        var reloadVariants = FxConfig.reloadVariants + FxConfig.systemVariants
         if hasCustomReload { reloadVariants.append("custom") }
         for variant in reloadVariants {
             let title = variant == "custom" ? "Custom (reload.wav)" : Self.reloadNames[variant] ?? variant
@@ -152,6 +156,26 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
         parent.submenu = submenu
         return parent
+    }
+
+    /// Slider row: drag, release, hear the new level on the click sound.
+    private func volumeSliderItem() -> NSMenuItem {
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 220, height: 24))
+        let slider = NSSlider(value: Double(store.config.fx.volume),
+                              minValue: 0, maxValue: 1,
+                              target: self, action: #selector(volumeChanged(_:)))
+        slider.isContinuous = false   // fire once on release, not while dragging
+        slider.frame = NSRect(x: 22, y: 2, width: 176, height: 20)
+        container.addSubview(slider)
+        let item = NSMenuItem()
+        item.view = container
+        return item
+    }
+
+    @objc private func volumeChanged(_ sender: NSSlider) {
+        store.setVolume(sender.floatValue)
+        // audible feedback at the new level, on the currently picked click sound
+        onPreviewReload(store.config.fx.reloadVariant)
     }
 
     // MARK: - Header card

@@ -15,6 +15,7 @@ final class SoundFX {
     private var reloadBuffers: [String: AVAudioPCMBuffer] = [:]
     private var customShot: NSSound?
     private var customReload: NSSound?
+    private var systemSounds: [String: NSSound] = [:]
     private var started = false
 
     init() {
@@ -41,32 +42,52 @@ final class SoundFX {
     var hasCustomShot: Bool { customShot != nil }
     var hasCustomReload: Bool { customReload != nil }
 
-    func playShot(variant: String) {
+    func playShot(variant: String, volume: Float) {
         log.debug("playShot variant=\(variant, privacy: .public)")
+        if playSystemSound(variant, volume: volume) { return }
         if variant == "custom", let customShot {
+            customShot.volume = volume
             customShot.stop()
             customShot.play()
             return
         }
-        play(buffer: shotBuffers[variant] ?? shotBuffers["classic"])
+        play(buffer: shotBuffers[variant] ?? shotBuffers["classic"], volume: volume)
     }
 
-    func playReload(variant: String) {
+    func playReload(variant: String, volume: Float) {
         log.debug("playReload variant=\(variant, privacy: .public)")
+        if playSystemSound(variant, volume: volume) { return }
         if variant == "custom", let customReload {
+            customReload.volume = volume
             customReload.stop()
             customReload.play()
             return
         }
-        play(buffer: reloadBuffers[variant] ?? reloadBuffers["clack"])
+        play(buffer: reloadBuffers[variant] ?? reloadBuffers["clack"], volume: volume)
     }
 
-    private func play(buffer: AVAudioPCMBuffer?) {
+    /// macOS alert sounds, played by name — nothing bundled, mastered audio.
+    private func playSystemSound(_ variant: String, volume: Float) -> Bool {
+        guard FxConfig.systemVariants.contains(variant) else { return false }
+        let sound = systemSounds[variant] ?? NSSound(named: variant)
+        guard let sound else {
+            log.error("system sound \(variant, privacy: .public) unavailable")
+            return true
+        }
+        systemSounds[variant] = sound
+        sound.volume = volume
+        sound.stop()
+        sound.play()
+        return true
+    }
+
+    private func play(buffer: AVAudioPCMBuffer?, volume: Float) {
         guard let buffer else {
             log.error("no buffer for requested variant")
             return
         }
         guard ensureEngineRunning() else { return }
+        engine.mainMixerNode.outputVolume = volume
         player.scheduleBuffer(buffer, at: nil)
         player.play()
     }

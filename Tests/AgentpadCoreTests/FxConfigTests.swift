@@ -70,4 +70,38 @@ final class FxConfigTests: XCTestCase {
         XCTAssertEqual(reloaded.fx.shotVariant, "8bit")
         XCTAssertEqual(reloaded.fx.reloadVariant, "pop")
     }
+
+    func testVolumeDefaultsToHalfForLegacyFxSections() throws {
+        let legacy = #"{"sounds":true,"shotVariant":"laser","reloadVariant":"clack"}"#
+        let fx = try JSONDecoder().decode(FxConfig.self, from: Data(legacy.utf8))
+        XCTAssertEqual(fx.volume, 0.5)
+    }
+
+    func testVolumeRoundtrips() throws {
+        var fx = FxConfig()
+        fx.volume = 0.2
+        let decoded = try JSONDecoder().decode(FxConfig.self, from: JSONEncoder().encode(fx))
+        XCTAssertEqual(decoded.volume, 0.2)
+    }
+
+    func testVolumeClampsOutOfRangeValues() throws {
+        let loud = try JSONDecoder().decode(FxConfig.self, from: Data(#"{"volume":3.5}"#.utf8))
+        XCTAssertEqual(loud.volume, 1.0)
+        let negative = try JSONDecoder().decode(FxConfig.self, from: Data(#"{"volume":-2}"#.utf8))
+        XCTAssertEqual(negative.volume, 0.0)
+    }
+
+    func testSetVolumePersists() {
+        let store = ConfigStore(config: .default, url: tempURL)
+        store.setVolume(0.25)
+        XCTAssertEqual(store.config.fx.volume, 0.25)
+        XCTAssertEqual(ConfigLoader.load(from: tempURL).fx.volume, 0.25)
+    }
+
+    func testSystemVariantsDontCollideWithSynthNamesInMenus() {
+        XCTAssertTrue(FxConfig.systemVariants.contains("Tink"))
+        let synth = Set((FxConfig.shotVariants + FxConfig.reloadVariants).map { $0.lowercased() })
+        let system = Set(FxConfig.systemVariants.map { $0.lowercased() })
+        XCTAssertTrue(synth.isDisjoint(with: system))
+    }
 }
