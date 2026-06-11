@@ -38,7 +38,8 @@ final class MappingSummaryTests: XCTestCase {
         XCTAssertEqual(rows.map(\.button), [
             "A", "B", "X", "Y",
             "D-Pad ↑", "D-Pad ↓", "D-Pad ←", "D-Pad →",
-            "LT", "LT + D-Pad ←", "LT + D-Pad →",
+            "LT", "LT + A", "LT + B", "LT + X", "LT + Y",
+            "LT + D-Pad ←", "LT + D-Pad →",
             "RT", "LB", "RB", "L3", "R3", "Menu",
         ])
     }
@@ -47,10 +48,14 @@ final class MappingSummaryTests: XCTestCase {
         let rows = MappingSummary.rows(for: .default)
         let ltIndex = rows.firstIndex(where: { $0.button == "LT" })!
         XCTAssertEqual(rows[ltIndex].action, "Right Click (tap)")
-        XCTAssertEqual(rows[ltIndex + 1].button, "LT + D-Pad ←")
-        XCTAssertEqual(rows[ltIndex + 1].action, "Ctrl+Left")
-        XCTAssertEqual(rows[ltIndex + 2].button, "LT + D-Pad →")
-        XCTAssertEqual(rows[ltIndex + 2].action, "Ctrl+Right")
+        // slots expand in display order: face buttons first, then D-Pad
+        XCTAssertEqual(rows[ltIndex + 1].button, "LT + A")
+        XCTAssertEqual(rows[ltIndex + 1].action, "Cmd+Tab")
+        XCTAssertEqual(rows[ltIndex + 2].action, "Delete")
+        XCTAssertEqual(rows[ltIndex + 3].action, "Cmd+Z")
+        XCTAssertEqual(rows[ltIndex + 4].action, "Ctrl+C")
+        XCTAssertEqual(rows[ltIndex + 5].button, "LT + D-Pad ←")
+        XCTAssertEqual(rows[ltIndex + 5].action, "Ctrl+Left")
     }
 
     func testRowsSkipUnconfiguredButtons() {

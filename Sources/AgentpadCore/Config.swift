@@ -151,9 +151,14 @@ public struct Config: Codable, Equatable {
             "leftShoulder": .key("cmd+`"),
             // double-tap Control: the default macOS dictation shortcut
             "rightShoulder": .key("ctrl ctrl"),
-            // tap = right click; held, the D-Pad switches macOS Spaces so
-            // plain arrow keys stay available for menu navigation
+            // tap = right click; held, it layers shortcuts onto the face
+            // buttons and Space switching onto the D-Pad, so plain arrows
+            // stay available for menu navigation
             "leftTrigger": .layer(tap: .rightClick, overlay: [
+                "a": .key("cmd+tab"),
+                "b": .key("delete"),
+                "x": .key("cmd+z"),
+                "y": .key("ctrl+c"),
                 "dpadLeft": .key("ctrl+left"),
                 "dpadRight": .key("ctrl+right"),
             ]),

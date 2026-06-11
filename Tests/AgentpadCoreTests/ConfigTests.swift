@@ -68,6 +68,10 @@ final class ConfigTests: XCTestCase {
     func testDefaultLeftTriggerIsRightClickLayer() {
         XCTAssertEqual(Config.default.buttons["leftTrigger"],
                        .layer(tap: .rightClick, overlay: [
+                           "a": .key("cmd+tab"),
+                           "b": .key("delete"),
+                           "x": .key("cmd+z"),
+                           "y": .key("ctrl+c"),
                            "dpadLeft": .key("ctrl+left"),
                            "dpadRight": .key("ctrl+right"),
                        ]))

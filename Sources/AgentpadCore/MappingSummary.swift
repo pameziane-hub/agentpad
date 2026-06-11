@@ -44,7 +44,8 @@ public enum MappingSummary {
             return raw.split(separator: " ")
                 .map { combo in
                     combo.split(separator: "+")
-                        .map { $0.count == 1 ? String($0) : $0.capitalized }
+                        // single characters render like keycaps: Cmd+Z, not Cmd+z
+                        .map { $0.count == 1 ? String($0).uppercased() : $0.capitalized }
                         .joined(separator: "+")
                 }
                 .joined(separator: " ")
