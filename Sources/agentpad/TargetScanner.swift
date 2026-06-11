@@ -80,6 +80,13 @@ final class TargetScanner {
     }
 
     private func clickableFrame(at point: CGPoint) -> CGRect? {
+        // the menu bar is the headline use case AND the place where point
+        // hit-testing is flakiest (status items only expose their app's
+        // root): query the frontmost app's menu bar directly instead
+        if point.y < 24, let item = menuBarItemViaFrontApp(at: point) {
+            return item
+        }
+
         var element: AXUIElement?
         guard AXUIElementCopyElementAtPosition(
                 systemWide, Float(point.x), Float(point.y), &element) == .success,
@@ -116,6 +123,26 @@ final class TargetScanner {
         }
         log.debug("target role=\(hitRole, privacy: .public) \(Int(frame.width), privacy: .public)x\(Int(frame.height), privacy: .public)")
         return frame
+    }
+
+    /// App menus (left) live on the frontmost app's AXMenuBar; status
+    /// items (right) on its AXExtrasMenuBar. Both expose reliable item
+    /// frames where point hit-tests don't.
+    private func menuBarItemViaFrontApp(at point: CGPoint) -> CGRect? {
+        guard let frontApp = NSWorkspace.shared.frontmostApplication else { return nil }
+        let app = AXUIElementCreateApplication(frontApp.processIdentifier)
+        for attribute in [kAXMenuBarAttribute, kAXExtrasMenuBarAttribute] {
+            var barRef: CFTypeRef?
+            guard AXUIElementCopyAttributeValue(app, attribute as CFString, &barRef) == .success,
+                  let barRef else { continue }
+            let bar = barRef as! AXUIElement
+            if let item = menuBarItem(in: bar, at: point),
+               let frame = frame(of: item) {
+                log.debug("target menubar item \(Int(frame.width), privacy: .public)x\(Int(frame.height), privacy: .public)")
+                return frame
+            }
+        }
+        return nil
     }
 
     private func menuBarItem(in menuBar: AXUIElement, at point: CGPoint) -> AXUIElement? {

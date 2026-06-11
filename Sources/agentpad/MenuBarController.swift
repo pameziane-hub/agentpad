@@ -66,6 +66,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        // we are also the sound submenu's delegate (for audition-on-
+        // highlight); rebuilding is for the top-level dropdown ONLY
+        guard menu == statusItem?.menu else { return }
         menu.removeAllItems()
 
         let header = NSMenuItem()
