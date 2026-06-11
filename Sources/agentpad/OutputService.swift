@@ -12,6 +12,12 @@ final class OutputService {
     /// Movement below this while the button is held is swallowed, so a click
     /// with a slightly deflected stick stays a click instead of drag-selecting.
     private let dragThreshold: CGFloat = 6
+    /// Multi-click bookkeeping: macOS only treats synthetic clicks as
+    /// double/triple (select word/line) if the events carry a click count.
+    private var clickCount: Int64 = 1
+    private var lastClickTime: TimeInterval = 0
+    private var lastClickLocation = CGPoint.zero
+    private let multiClickRadius: CGFloat = 5
 
     // MARK: - Mouse
 
@@ -33,25 +39,38 @@ final class OutputService {
     private func applyMove(dx: CGFloat, dy: CGFloat) {
         let current = currentLocation()
         let target = clampToDisplays(CGPoint(x: current.x + dx, y: current.y + dy))
-        // while the click button is held, movement must be a drag
+        // while the click button is held, movement must be a drag; it keeps
+        // the click count so double-click-drag selects word-wise like a mouse
         let type: CGEventType = leftButtonHeld ? .leftMouseDragged : .mouseMoved
-        CGEvent(mouseEventSource: source, mouseType: type,
-                mouseCursorPosition: target, mouseButton: .left)?
-            .post(tap: .cghidEventTap)
+        let event = CGEvent(mouseEventSource: source, mouseType: type,
+                            mouseCursorPosition: target, mouseButton: .left)
+        if leftButtonHeld { event?.setIntegerValueField(.mouseEventClickState, value: clickCount) }
+        event?.post(tap: .cghidEventTap)
     }
 
     func leftDown() {
+        let now = Date.timeIntervalSinceReferenceDate
+        let location = currentLocation()
+        let dx = location.x - lastClickLocation.x
+        let dy = location.y - lastClickLocation.y
+        let nearLastClick = (dx * dx + dy * dy).squareRoot() <= multiClickRadius
+        let withinInterval = now - lastClickTime <= NSEvent.doubleClickInterval
+        // same spot + system double-click tempo → escalate: 2 = word, 3 = line
+        clickCount = (nearLastClick && withinInterval) ? clickCount + 1 : 1
+        lastClickTime = now
+        lastClickLocation = location
+
         leftButtonHeld = true
         dragLatched = false
         pendingDrag = .zero
-        postMouse(.leftMouseDown, button: .left)
+        postMouse(.leftMouseDown, button: .left, clickCount: clickCount)
     }
 
     func leftUp() {
         leftButtonHeld = false
         dragLatched = false
         pendingDrag = .zero
-        postMouse(.leftMouseUp, button: .left)
+        postMouse(.leftMouseUp, button: .left, clickCount: clickCount)
     }
 
     func rightDown() { postMouse(.rightMouseDown, button: .right) }
@@ -63,10 +82,11 @@ final class OutputService {
             .post(tap: .cghidEventTap)
     }
 
-    private func postMouse(_ type: CGEventType, button: CGMouseButton) {
-        CGEvent(mouseEventSource: source, mouseType: type,
-                mouseCursorPosition: currentLocation(), mouseButton: button)?
-            .post(tap: .cghidEventTap)
+    private func postMouse(_ type: CGEventType, button: CGMouseButton, clickCount: Int64 = 1) {
+        let event = CGEvent(mouseEventSource: source, mouseType: type,
+                            mouseCursorPosition: currentLocation(), mouseButton: button)
+        event?.setIntegerValueField(.mouseEventClickState, value: clickCount)
+        event?.post(tap: .cghidEventTap)
     }
 
     private func currentLocation() -> CGPoint {
