@@ -75,7 +75,13 @@ final class OutputService {
             postModifierTap(combo)
             return
         }
-        let flags = cgFlags(combo.flags)
+        var flags = cgFlags(combo.flags)
+        // real keyboards set fn+numpad on arrow keys; system hot-keys like
+        // Mission Control's ctrl+arrow space switching match against that
+        if (123...126).contains(combo.keyCode) {
+            flags.insert(.maskSecondaryFn)
+            flags.insert(.maskNumericPad)
+        }
         for keyDown in [true, false] {
             guard let event = CGEvent(keyboardEventSource: source,
                                       virtualKey: combo.keyCode, keyDown: keyDown) else { continue }
