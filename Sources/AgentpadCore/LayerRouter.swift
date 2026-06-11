@@ -7,10 +7,10 @@ import Foundation
 ///
 /// Two gestures share the layer button, split by hold duration:
 /// - short tap (< `holdThreshold`): fires the layer's `tap` action.
-/// - long hold (≥ `holdThreshold`, the HUD is showing): a menu. Slots work
-///   while held AND for `graceWindow` after release, because users naturally
-///   release the "menu button" before picking (field test 2026-06-11).
-///   Releasing without a pick fires nothing.
+/// - long hold (≥ `holdThreshold`, the HUD is showing): a menu. Releasing
+///   keeps the menu open — field test 2026-06-11 showed picks arrive 0.6–4 s
+///   after release, so no timer can work. The next press resolves it: a slot
+///   picks, anything else closes the menu and acts normally.
 public struct LayerRouter {
     public enum Event: Equatable {
         /// Forward the action with the button's press state.
@@ -24,17 +24,19 @@ public struct LayerRouter {
     /// a menu. The HUD uses the same threshold, so "HUD visible" and
     /// "menu mode" are always the same thing.
     public static let holdThreshold: TimeInterval = 0.3
-    /// How long slots stay pickable after releasing a long-held layer.
-    public static let graceWindow: TimeInterval = 0.25
 
     public private(set) var heldLayer: String?
+    /// Layer whose menu stays open after release, awaiting a pick.
+    private var openMenu: String?
     private var heldSince: TimeInterval = 0
     private var layerUsed = false
-    /// Menu pick still allowed until this deadline after a long-hold release.
-    private var grace: (layerId: String, until: TimeInterval)?
     /// Action chosen at press time, so a down/up pair never splits across
     /// two different actions when the layer state changes in between.
     private var pressActions: [String: ButtonAction] = [:]
+
+    /// The layer the HUD should show: a held layer or an open menu.
+    /// HUD visible == slots active, always.
+    public var hudLayer: String? { heldLayer ?? openMenu }
 
     public init() {}
 
@@ -44,12 +46,12 @@ public struct LayerRouter {
                 : handleRelease(of: id, at: time, buttons: buttons)
     }
 
-    /// Clear all held state (on pause, disconnect, …) so no layer, grace
-    /// window, or press/release pair survives across an interruption.
+    /// Clear all held state (on pause, disconnect, …) so no layer, open
+    /// menu, or press/release pair survives across an interruption.
     public mutating func reset() {
         heldLayer = nil
+        openMenu = nil
         layerUsed = false
-        grace = nil
         pressActions = [:]
     }
 
@@ -62,12 +64,11 @@ public struct LayerRouter {
             pressActions[id] = overlayAction
             return .action(overlayAction, pressed: true)
         }
-        // a released menu: the first press after it decides — a slot within
-        // the window picks from the menu, anything else closes it
-        if let grace {
-            self.grace = nil
-            if time < grace.until,
-               case .layer(_, let overlay)? = buttons[grace.layerId],
+        // an open menu: the next press decides — a slot picks from the
+        // menu, anything else closes it and acts normally below
+        if let menuId = openMenu {
+            openMenu = nil
+            if case .layer(_, let overlay)? = buttons[menuId],
                let overlayAction = overlay[id] {
                 pressActions[id] = overlayAction
                 return .action(overlayAction, pressed: true)
@@ -94,7 +95,7 @@ public struct LayerRouter {
             if time - heldSince < Self.holdThreshold {
                 return tap.map { .tap($0) } ?? .nothing
             }
-            grace = (layerId: id, until: time + Self.graceWindow)
+            openMenu = id
             return .nothing
         }
         guard let action = pressActions.removeValue(forKey: id) else { return .nothing }

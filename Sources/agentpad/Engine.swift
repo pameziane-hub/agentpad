@@ -170,10 +170,10 @@ final class Engine {
         guard state == .active else { return }
 
         let now = Date.timeIntervalSinceReferenceDate
-        let heldBefore = router.heldLayer
+        let hudBefore = router.hudLayer
         let event = router.handle(id: id, pressed: pressed, at: now,
                                   buttons: store.config.buttons)
-        if router.heldLayer != heldBefore { onLayerHold?(router.heldLayer) }
+        if router.hudLayer != hudBefore { onLayerHold?(router.hudLayer) }
 
         switch event {
         case .nothing:

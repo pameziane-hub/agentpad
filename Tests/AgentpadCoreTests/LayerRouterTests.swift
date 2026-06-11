@@ -111,65 +111,90 @@ final class LayerRouterTests: XCTestCase {
         XCTAssertNil(router.heldLayer)
     }
 
-    // MARK: - Menu-style grace window
+    // MARK: - Sticky menu after a long hold
     // Field test 2026-06-11: users read the HUD as a menu — hold, RELEASE,
-    // then pick. A short grace window after a long hold honors that.
+    // then pick at their own pace (logged picks came 0.6–4 s later). No
+    // timer can guess that, so the menu simply stays open until resolved.
 
-    func testLongHoldReleaseFiresNothing() {
+    func testLongHoldReleaseOpensStickyMenu() {
         _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
         XCTAssertEqual(router.handle(id: "leftTrigger", pressed: false, at: 0.5, buttons: buttons),
                        .nothing)
+        XCTAssertEqual(router.hudLayer, "leftTrigger")
     }
 
-    func testOverlayPressWithinGraceStillRemaps() {
+    func testMenuPickWorksHoweverLateItComes() {
         _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
         _ = router.handle(id: "leftTrigger", pressed: false, at: 0.5, buttons: buttons)
-        XCTAssertEqual(router.handle(id: "a", pressed: true, at: 0.65, buttons: buttons),
+        XCTAssertEqual(router.handle(id: "a", pressed: true, at: 4.8, buttons: buttons),
                        .action(.key("cmd+tab"), pressed: true))
-        XCTAssertEqual(router.handle(id: "a", pressed: false, at: 0.7, buttons: buttons),
+        XCTAssertEqual(router.handle(id: "a", pressed: false, at: 4.9, buttons: buttons),
                        .action(.key("cmd+tab"), pressed: false))
     }
 
-    func testGraceExpires() {
+    func testMenuPickClosesTheMenu() {
         _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
         _ = router.handle(id: "leftTrigger", pressed: false, at: 0.5, buttons: buttons)
-        XCTAssertEqual(router.handle(id: "a", pressed: true, at: 0.8, buttons: buttons),
+        _ = router.handle(id: "a", pressed: true, at: 1.0, buttons: buttons)
+        _ = router.handle(id: "a", pressed: false, at: 1.1, buttons: buttons)
+        XCTAssertNil(router.hudLayer)
+        // second press is back to base
+        XCTAssertEqual(router.handle(id: "a", pressed: true, at: 1.5, buttons: buttons),
                        .action(.leftClick, pressed: true))
     }
 
-    func testGraceConsumedByFirstPress() {
+    func testNonSlotPressClosesMenuAndActsNormally() {
         _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
         _ = router.handle(id: "leftTrigger", pressed: false, at: 0.5, buttons: buttons)
-        _ = router.handle(id: "a", pressed: true, at: 0.6, buttons: buttons)
-        _ = router.handle(id: "a", pressed: false, at: 0.62, buttons: buttons)
-        // one menu pick per grace: the second press is back to base
-        XCTAssertEqual(router.handle(id: "a", pressed: true, at: 0.7, buttons: buttons),
-                       .action(.leftClick, pressed: true))
-    }
-
-    func testNonOverlayPressClearsGrace() {
-        _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
-        _ = router.handle(id: "leftTrigger", pressed: false, at: 0.5, buttons: buttons)
-        XCTAssertEqual(router.handle(id: "rightTrigger", pressed: true, at: 0.55, buttons: buttons),
+        XCTAssertEqual(router.handle(id: "rightTrigger", pressed: true, at: 2.0, buttons: buttons),
                        .action(.key("return"), pressed: true))
-        XCTAssertEqual(router.handle(id: "a", pressed: true, at: 0.6, buttons: buttons),
+        XCTAssertNil(router.hudLayer)
+        XCTAssertEqual(router.handle(id: "a", pressed: true, at: 2.5, buttons: buttons),
                        .action(.leftClick, pressed: true))
     }
 
-    func testUsedLayerReleaseGrantsNoGrace() {
+    func testUsedLayerReleaseOpensNoMenu() {
         _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
         _ = router.handle(id: "dpadLeft", pressed: true, at: 0.1, buttons: buttons)
         _ = router.handle(id: "dpadLeft", pressed: false, at: 0.15, buttons: buttons)
         _ = router.handle(id: "leftTrigger", pressed: false, at: 0.5, buttons: buttons)
+        XCTAssertNil(router.hudLayer)
         XCTAssertEqual(router.handle(id: "a", pressed: true, at: 0.55, buttons: buttons),
                        .action(.leftClick, pressed: true))
     }
 
-    func testShortTapGrantsNoGrace() {
+    func testShortTapRightClicksAndOpensNoMenu() {
         _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
         XCTAssertEqual(router.handle(id: "leftTrigger", pressed: false, at: 0.1, buttons: buttons),
                        .tap(.rightClick))
+        XCTAssertNil(router.hudLayer)
         XCTAssertEqual(router.handle(id: "a", pressed: true, at: 0.15, buttons: buttons),
+                       .action(.leftClick, pressed: true))
+    }
+
+    func testLayerPressWhileMenuOpenStartsAFreshHold() {
+        _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
+        _ = router.handle(id: "leftTrigger", pressed: false, at: 0.5, buttons: buttons)
+        XCTAssertEqual(router.handle(id: "leftTrigger", pressed: true, at: 1.0, buttons: buttons),
+                       .nothing)
+        XCTAssertEqual(router.hudLayer, "leftTrigger")
+        // a short release of that fresh hold taps as usual
+        XCTAssertEqual(router.handle(id: "leftTrigger", pressed: false, at: 1.1, buttons: buttons),
+                       .tap(.rightClick))
+    }
+
+    func testHudLayerTracksHeldLayerToo() {
+        XCTAssertNil(router.hudLayer)
+        _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
+        XCTAssertEqual(router.hudLayer, "leftTrigger")
+    }
+
+    func testResetClosesMenu() {
+        _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
+        _ = router.handle(id: "leftTrigger", pressed: false, at: 0.5, buttons: buttons)
+        router.reset()
+        XCTAssertNil(router.hudLayer)
+        XCTAssertEqual(router.handle(id: "a", pressed: true, at: 1.0, buttons: buttons),
                        .action(.leftClick, pressed: true))
     }
 

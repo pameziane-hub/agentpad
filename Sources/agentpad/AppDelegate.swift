@@ -50,14 +50,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         engine.onLayerHold = { [weak self, weak overlay] layerId in
             self?.layerHudTimer?.invalidate()
             guard let layerId else {
-                // the menu stays pickable for the grace window after release,
-                // so the HUD lingers just as long
-                self?.layerHudTimer = Timer.scheduledTimer(
-                    withTimeInterval: LayerRouter.graceWindow, repeats: false
-                ) { [weak overlay] _ in overlay?.hideLayerHud() }
+                // menu resolved (pick, other button, tap): HUD goes right away
+                overlay?.hideLayerHud()
                 return
             }
-            // same threshold as the router: HUD visible == menu mode
+            // same threshold as the router: HUD visible == menu mode; the
+            // menu then stays until resolved, so the HUD does too
             self?.layerHudTimer = Timer.scheduledTimer(
                 withTimeInterval: LayerRouter.holdThreshold, repeats: false
             ) { [weak overlay] _ in overlay?.showLayerHud(forLayer: layerId) }
