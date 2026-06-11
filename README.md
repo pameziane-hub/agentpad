@@ -19,7 +19,7 @@ AI coding agents spend a lot of time working while you wait, then suddenly need 
 ## Install
 
 ```bash
-git clone https://github.com/YOURNAME/agentpad.git
+git clone https://github.com/pameziane-hub/agentpad.git
 cd agentpad
 ./scripts/make-app.sh        # builds dist/agentpad.app
 open dist/agentpad.app       # or copy it to /Applications first
