@@ -130,7 +130,9 @@ public struct MagnetConfig: Codable, Equatable {
 
     public init(enabled: Bool = true, strength: Float = 0.5) {
         self.enabled = enabled
-        self.strength = strength
+        // same 0…1 invariant as the decode path — a strength above 1 would
+        // flip the damping factor negative and reverse cursor movement
+        self.strength = min(max(strength, 0), 1)
     }
 
     private enum CodingKeys: String, CodingKey { case enabled, strength }

@@ -90,4 +90,25 @@ final class MagnetFieldTests: XCTestCase {
                                       target: target, strength: 1, speed: 1200)
         XCTAssertEqual(fast, move)
     }
+
+    // MARK: - Review findings 2026-06-11 (independent review)
+
+    func testLeavingAStickyTargetIsNotDamped() {
+        // cursor inside the target, moving AWAY from its center: the exit
+        // must be free — "never held back" applies inside the frame too
+        let away = CGVector(dx: -4, dy: 0)
+        let free = MagnetField.adjust(movement: away, cursor: CGPoint(x: 110, y: 12),
+                                      target: target, strength: 1, speed: 200)
+        XCTAssertEqual(free, away)
+    }
+
+    func testMemberwiseInitClampsStrength() {
+        XCTAssertEqual(MagnetConfig(strength: 7).strength, 1.0)
+        XCTAssertEqual(MagnetConfig(strength: -2).strength, 0.0)
+    }
+
+    func testSteeringWeightNeverExceedsTheSpecCap() {
+        // spec: the path bends ≤25 % toward the center — pin the cap
+        XCTAssertLessThanOrEqual(MagnetField.maxSteering, 0.25)
+    }
 }

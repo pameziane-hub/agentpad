@@ -8,9 +8,11 @@ import os.log
 final class OutputService {
     private let log = Logger(subsystem: "com.paulameziane.agentpad", category: "output")
     private let source = CGEventSource(stateID: .hidSystemState)
-    /// The magnet must never fight a drag (text selection!).
-    var isDragging: Bool { leftButtonHeld }
+    /// The magnet must never fight a drag (text selection!) — with either
+    /// button.
+    var isDragging: Bool { leftButtonHeld || rightButtonHeld }
     private var leftButtonHeld = false
+    private var rightButtonHeld = false
     private var dragLatched = false
     private var pendingDrag = CGVector.zero
     /// Movement below this while the button is held is swallowed, so a click
@@ -80,8 +82,15 @@ final class OutputService {
         postMouse(.leftMouseUp, button: .left, clickCount: clickCount)
     }
 
-    func rightDown() { postMouse(.rightMouseDown, button: .right) }
-    func rightUp() { postMouse(.rightMouseUp, button: .right) }
+    func rightDown() {
+        rightButtonHeld = true
+        postMouse(.rightMouseDown, button: .right)
+    }
+
+    func rightUp() {
+        rightButtonHeld = false
+        postMouse(.rightMouseUp, button: .right)
+    }
 
     func scroll(dx: Double, dy: Double) {
         CGEvent(scrollWheelEvent2Source: source, units: .pixel, wheelCount: 2,

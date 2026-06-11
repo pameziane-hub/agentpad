@@ -19,7 +19,8 @@ public enum MagnetField {
     /// Steering engages within this distance of the target's frame.
     public static let approachRange: CGFloat = 80
     /// Direction-blend weight toward the target center at full strength.
-    static let maxSteering: CGFloat = 0.35
+    /// Spec cap: the path bends at most 25 % toward the center.
+    public static let maxSteering: CGFloat = 0.25
 
     public static func adjust(movement: CGVector, cursor: CGPoint,
                               target: CGRect?, strength: Float,
@@ -27,6 +28,11 @@ public enum MagnetField {
         guard let target, strength > 0, speed <= speedLimit else { return movement }
         let sticky = target.insetBy(dx: -margin, dy: -margin)
         if sticky.contains(cursor) {
+            // "never held back" holds inside the frame too: damping applies
+            // only while not clearly moving away from the target center
+            let toCenter = CGVector(dx: target.midX - cursor.x, dy: target.midY - cursor.y)
+            let dot = movement.dx * toCenter.dx + movement.dy * toCenter.dy
+            guard dot >= 0 else { return movement }
             let factor = 1 - maxDamping * CGFloat(strength)
             return CGVector(dx: movement.dx * factor, dy: movement.dy * factor)
         }

@@ -82,8 +82,10 @@ final class TargetScanner {
     private func clickableFrame(at point: CGPoint) -> CGRect? {
         // the menu bar is the headline use case AND the place where point
         // hit-testing is flakiest (status items only expose their app's
-        // root): query the frontmost app's menu bar directly instead
-        if point.y < 24, let item = menuBarItemViaFrontApp(at: point) {
+        // root): query the frontmost app's menu bar directly instead.
+        // 40 pt covers notched MacBook bars; the bar-frame containment
+        // check below keeps this exact.
+        if point.y < 40, let item = menuBarItemViaFrontApp(at: point) {
             return item
         }
 
@@ -106,8 +108,8 @@ final class TargetScanner {
             var parentRef: CFTypeRef?
             guard AXUIElementCopyAttributeValue(
                     element, kAXParentAttribute as CFString, &parentRef) == .success,
-                  let parentRef else { break }
-            element = parentRef as! AXUIElement
+                  let parent = asAXElement(parentRef) else { break }
+            element = parent
             hitRole = role(of: element) ?? "?"
             climbed += 1
         }
@@ -117,25 +119,43 @@ final class TargetScanner {
         }
         guard let frame = frame(of: element),
               frame.width <= Self.maxTargetSize.width,
-              frame.height <= Self.maxTargetSize.height else {
-            log.debug("reject size role=\(hitRole, privacy: .public)")
+              frame.height <= Self.maxTargetSize.height,
+              // a climbed-to ancestor laid out away from the probe point is
+              // not what the user is aiming at — never steer toward it
+              frame.insetBy(dx: -MagnetField.margin, dy: -MagnetField.margin).contains(point)
+        else {
+            log.debug("reject size/containment role=\(hitRole, privacy: .public)")
             return nil
         }
         log.debug("target role=\(hitRole, privacy: .public) \(Int(frame.width), privacy: .public)x\(Int(frame.height), privacy: .public)")
         return frame
     }
 
+    /// CF `as!` casts never runtime-verify — a buggy AX implementation
+    /// returning the wrong type must not crash the app at 10 Hz.
+    private func asAXElement(_ ref: CFTypeRef?) -> AXUIElement? {
+        guard let ref, CFGetTypeID(ref) == AXUIElementGetTypeID() else { return nil }
+        return (ref as! AXUIElement)
+    }
+
     /// App menus (left) live on the frontmost app's AXMenuBar; status
     /// items (right) on its AXExtrasMenuBar. Both expose reliable item
     /// frames where point hit-tests don't.
     private func menuBarItemViaFrontApp(at point: CGPoint) -> CGRect? {
+        // NOTE: frontmostApplication off-main is a documented gray area;
+        // a stale read only yields a missed/wrong bar for one scan cycle.
+        // Known limit: status items of OTHER apps live on their own
+        // AXExtrasMenuBar and stay invisible here.
         guard let frontApp = NSWorkspace.shared.frontmostApplication else { return nil }
         let app = AXUIElementCreateApplication(frontApp.processIdentifier)
         for attribute in [kAXMenuBarAttribute, kAXExtrasMenuBarAttribute] {
             var barRef: CFTypeRef?
             guard AXUIElementCopyAttributeValue(app, attribute as CFString, &barRef) == .success,
-                  let barRef else { continue }
-            let bar = barRef as! AXUIElement
+                  let bar = asAXElement(barRef),
+                  // exact gate: the probe point must sit inside the bar
+                  // itself (handles notch heights and displays stacked
+                  // above the main one)
+                  frame(of: bar)?.contains(point) == true else { continue }
             if let item = menuBarItem(in: bar, at: point),
                let frame = frame(of: item) {
                 log.debug("target menubar item \(Int(frame.width), privacy: .public)x\(Int(frame.height), privacy: .public)")

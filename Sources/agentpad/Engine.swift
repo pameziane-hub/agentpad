@@ -42,6 +42,8 @@ final class Engine {
     private var connected = false
     private var stickWasMoving = false
     private var movingTicks = 0
+    private var stillTicks = 0
+    private var scanActiveSent = false
     private var timer: Timer?
     private var lastTick = Date.timeIntervalSinceReferenceDate
 
@@ -109,6 +111,7 @@ final class Engine {
             router.reset()
             repeater.reset()
             onLayerHold?(nil)
+            scanActiveSent = false
             magnetScanner.setActive(false)
         }
         log.info("state: \(String(describing: self.state), privacy: .public)")
@@ -118,7 +121,9 @@ final class Engine {
     private func tick() {
         guard state == .active else { return }
         let now = Date.timeIntervalSinceReferenceDate
-        let dt = min(now - lastTick, 0.1)
+        // clamped on both sides: a wall-clock step backwards (NTP, manual
+        // change) must not sling the cursor with a negative dt
+        let dt = min(max(now - lastTick, 0), 0.1)
         lastTick = now
 
         let pointer = store.config.pointer
@@ -138,12 +143,24 @@ final class Engine {
                 log.debug("movement running: \(self.movingTicks, privacy: .public) ticks")
             }
         }
-        magnetScanner.setActive(stickWasMoving)
+        // scanning runs only while the magnet is on and the stick is (or
+        // was just) moving — the ~150 ms grace keeps the target alive
+        // through deadzone flutter while fine-aiming. Dedup before the
+        // queue hop: 120 Hz must not enqueue 120 no-op closures a second.
+        stillTicks = stickWasMoving ? 0 : stillTicks + 1
+        let scanWanted = store.config.magnet.enabled && stillTicks < 18
+        if scanWanted != scanActiveSent {
+            scanActiveSent = scanWanted
+            magnetScanner.setActive(scanWanted)
+        }
         if move != .zero {
             // GameController y points up, screen y points down
             var dx = CGFloat(Double(move.x) * pointer.maxSpeed * dt)
             var dy = CGFloat(Double(-move.y) * pointer.maxSpeed * dt)
-            magnetScanner.update(heading: CGVector(dx: dx, dy: dy))
+            // ~20 Hz is plenty for the look-ahead heading
+            if movingTicks % 6 == 1 {
+                magnetScanner.update(heading: CGVector(dx: dx, dy: dy))
+            }
             let magnet = store.config.magnet
             if magnet.enabled, !output.isDragging,
                let cursor = CGEvent(source: nil)?.location {
