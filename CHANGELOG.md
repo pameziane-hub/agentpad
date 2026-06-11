@@ -2,6 +2,23 @@
 
 All notable changes to agentpad. Format follows [Keep a Changelog](https://keepachangelog.com), versioning follows [SemVer](https://semver.org).
 
+## [0.3.0] — 2026-06-11
+
+### Added
+- **Shortcut layer on LT:** tap = right click as before; holding opens a slot menu — A = Last App, B = Delete, X = Undo, Y = Interrupt, D-Pad ↑ = Select All, D-Pad ←/→ = switch Spaces. The D-Pad's plain arrows are back for menu navigation.
+- **Sticky slot menu with HUD:** the menu survives releasing LT and stays open across picks (each pick restarts the 6 s timeout); a translucent cheat-line top-center shows the slots in plain words. HUD visible = slots active. Tap LT to close.
+- **Keyboard-style auto-repeat:** held buttons mapped to a single key repeat at your macOS keyboard rate. Cmd/Ctrl/Opt shortcuts deliberately fire once per press.
+- **System sound flavors:** the built-in macOS alert sounds (Tink, Glass, Morse, Purr, Hero, Submarine) join the synthesized ones for both events — mastered audio, nothing bundled.
+- **Volume slider** in the Sound FX menu; all FX respect it (default 50 %).
+- **Audition on highlight:** walking the sound lists (arrows or hover) plays each flavor before you commit, macOS-font-menu style. Enabling sounds plays an audible proof.
+- **Start opens the menu:** the Menu (☰) button now opens the status-bar dropdown (console convention), so everything is configurable from the pad. Pause moved inside the menu; the `pause` action remains mappable.
+- **Quick install:** `curl -fsSL https://raw.githubusercontent.com/pameziane-hub/agentpad/main/install.sh | bash` — downloads the latest release, clears quarantine, installs to /Applications.
+
+### Fixed
+- Overshooting a secondary display's edge no longer teleports the cursor to the main screen — it clamps to the nearest display edge (menu bars on a MacBook panel are reachable again).
+- The sound menu is navigable with arrow keys / the D-Pad again.
+- Left clicks log click count, position and frontmost app at debug level to chase reliability reports.
+
 ## [0.2.0] — 2026-06-11
 
 ### Added

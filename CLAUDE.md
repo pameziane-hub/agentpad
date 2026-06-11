@@ -31,3 +31,7 @@ Never run the bare `.build/*/agentpad` binary for real use — it dies with its 
 - URL actions (dictation deep links) must open with `NSWorkspace.OpenConfiguration.activates = false`, otherwise the dictation app steals focus and pastes into the void.
 - The View button is reserved for the overlay/remap UI and is intentionally not remappable.
 - User config lives at `~/.config/agentpad/mapping.json`; configs are loaded at launch (restart after manual edits). Legacy configs without the `fx` section must keep decoding — see `FxConfigTests`.
+- `NSMenuItem.view` breaks arrow-key navigation (and thus D-Pad menu walking). View-based items are for the volume slider ONLY; selectable rows stay native. Sound auditioning runs through `menu(_:willHighlight:)` instead.
+- `keepsMenuPresented` is UIKit/iOS-only — AppKit has no equivalent; don't reach for it.
+- Layer invariant: HUD visible == slots active (`LayerRouter.hudLayer`). Timing-window designs for the layer failed twice in field tests (users pick 0.6–4 s after release); the menu is state-based on purpose.
+- Release flow: the GitHub release asset is always named `agentpad.zip` (no version in the name) — `install.sh` depends on the stable `/releases/latest/download/agentpad.zip` URL.

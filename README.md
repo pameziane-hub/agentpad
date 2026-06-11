@@ -14,9 +14,23 @@ AI coding agents spend a lot of time working while you wait, then suddenly need 
 
 - macOS 13+
 - An Xbox controller paired via Bluetooth (Xbox One S revision or newer, incl. Series X|S). PlayStation DualShock 4 / DualSense controllers should work too — Apple's GameController framework handles both — but only Xbox is tested.
-- Swift toolchain to build from source (comes with Xcode or the Xcode Command Line Tools)
 
 ## Install
+
+One line, no developer tools needed:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/pameziane-hub/agentpad/main/install.sh | bash
+```
+
+This downloads the latest release into `/Applications`, clears the Gatekeeper
+quarantine (the build is signed but not notarized), and launches the app.
+A 🎮 icon appears in your menu bar; on first launch macOS asks you to grant
+the **Accessibility** permission — see below, the app cannot move your mouse
+without it. Then pair your controller via Bluetooth and you're set.
+
+<details>
+<summary><b>Build from source instead</b> (needs the Swift toolchain — Xcode or the Command Line Tools)</summary>
 
 ```bash
 git clone https://github.com/pameziane-hub/agentpad.git
@@ -25,9 +39,9 @@ cd agentpad
 open dist/agentpad.app       # or copy it to /Applications first
 ```
 
-A 🎮 icon appears in your menu bar. On first launch macOS will ask you to grant the **Accessibility** permission — see below, the app cannot move your mouse without it.
-
 > **Don't run the bare `.build/release/agentpad` binary directly:** it lives and dies with your terminal window, and macOS attributes its permissions to the terminal instead of the app. The `.app` bundle is the supported way.
+
+</details>
 
 ## Granting the Accessibility permission
 
@@ -53,13 +67,36 @@ macOS requires explicit permission before any app may control mouse and keyboard
 | **X** | Tab |
 | **Y** | Shift+Tab — *cycles Claude Code's permission modes* |
 | **RT** (right trigger) | Return — *fire off the prompt* |
-| **LT** (left trigger) | Right click |
-| D-Pad | Arrow keys — *navigate prompt options* |
+| **LT** (left trigger) | Tap = right click · **hold = shortcut layer** (see below) |
+| D-Pad | Arrow keys — *navigate prompt options; held keys auto-repeat* |
 | **RB** (right bumper) | 🎙 Dictation (configurable, see below) |
 | **LB** (left bumper) | Cmd+` — cycle windows of the frontmost app |
 | **L3 / R3** (stick click) | Cmd+C / Cmd+V — copy & paste |
-| Menu (☰) | Pause / resume agentpad |
+| Menu (☰) | Open the agentpad menu — *navigate it with the D-Pad; Pause sits inside* |
 | **View** (⧉, small left button) | Toggle the on-screen mapping overlay (reserved, not remappable) |
+
+## The shortcut layer (hold LT)
+
+A Steam-Input-style hold layer puts the essential desktop shortcuts on the pad:
+
+- **Tap LT** (short): right click, as always.
+- **Hold LT** (~0.3 s): a slot menu pops up top-center. Press slots while
+  holding — or release and pick at your own pace, the menu stays open.
+  **HUD visible = slots active.**
+
+| Slot | Does |
+|---|---|
+| LT + **A** | Last App (Cmd+Tab) |
+| LT + **B** | Delete ⌫ — *the eraser for dictation typos* |
+| LT + **X** | Undo (Cmd+Z) |
+| LT + **Y** | Interrupt (Ctrl+C) — *stop a runaway terminal process* |
+| LT + **D-Pad ↑** | Select All (Cmd+A) |
+| LT + **D-Pad ←/→** | Switch macOS Spaces |
+
+Picks keep the menu open so you can chain them; tap LT again (or press any
+non-slot button) to close it, or let the 6-second timeout fold it away.
+Held keys repeat at your macOS keyboard rate — except Cmd/Ctrl/Opt shortcuts,
+which deliberately fire once per press (no accidental Cmd+Z machine gun).
 
 ## Rebinding without editing JSON
 
@@ -69,7 +106,7 @@ The same overlay doubles as a cheat sheet: tap **View** anytime to see the full 
 
 ## Western mode 🔫
 
-Optional sound effects, off by default: firing a prompt with Return plays a shot, left click plays a reload. The **Sound FX** submenu in the dropdown toggles them and offers four flavors each — shot: Revolver / Laser / 8-Bit / Silenced, reload: Clack / Pop / Thock / Tick — selecting one previews it instantly. All sounds are synthesized in code (no audio assets); drop your own `shot.wav` / `reload.wav` into `~/.config/agentpad/` and a fifth "Custom" entry appears.
+Optional sound effects, off by default: firing a prompt with Return plays a shot, left click plays a reload. The **Sound FX** submenu in the dropdown toggles them, has a volume slider, and offers flavors per event — synthesized ones (shot: Revolver / Laser / 8-Bit / Silenced, reload: Clack / Pop / Thock / Tick) plus the built-in macOS alert sounds (Tink, Glass, Morse, Purr, Hero, Submarine — mastered audio, nothing bundled). **Walking the list plays each flavor** (arrow keys or hover, like the macOS font menu); clicking commits. Drop your own `shot.wav` / `reload.wav` into `~/.config/agentpad/` and a "Custom" entry appears.
 
 ## Configuration
 
@@ -87,7 +124,9 @@ Every button takes one of these actions:
 { "type": "key",  "value": "shift+tab" }     // combo: cmd, shift, ctrl, opt + key
 { "type": "key",  "value": "ctrl ctrl" }     // space-separated = sequence (double-tap)
 { "type": "url",  "value": "superwhisper://record" }
-{ "type": "leftClick" } | { "type": "rightClick" } | { "type": "pause" }
+{ "type": "leftClick" } | { "type": "rightClick" } | { "type": "pause" } | { "type": "statusMenu" }
+{ "type": "layer", "tap": { "type": "rightClick" },   // hold-layer: tap action +
+  "overlay": { "a": { "type": "key", "value": "cmd+tab" } } }  // per-button slots
 ```
 
 ### Dictation recipes
@@ -115,7 +154,7 @@ The right bumper defaults to double-tapping **Control** — the stock macOS dict
 ## Notes
 
 - **Non-US keyboard layouts:** key codes are position-based. `cmd+\`` lands on the key next to left Shift on ISO (e.g. German) keyboards — usually still the window-cycling shortcut, but adjust your config if not.
-- **Unsigned binary:** if you download a prebuilt release instead of building yourself, macOS Gatekeeper will warn on first launch (right-click → Open).
+- **Gatekeeper:** prebuilt releases are signed but not notarized. `install.sh` clears the quarantine flag for you; if you download the zip manually and macOS warns, right-click the app → **Open** once.
 
 ## License
 
