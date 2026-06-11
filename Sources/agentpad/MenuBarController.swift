@@ -2,16 +2,19 @@ import AppKit
 import AgentpadCore
 
 /// Status item in the menu bar with a Superwhisper-style dropdown: a header
-/// card showing connection state and battery, the live button mapping, and
-/// the app actions. The menu is rebuilt on every open so it never goes stale.
+/// card showing connection state and battery, the live button mapping
+/// (click a row to rebind it from the controller), and the app actions.
+/// The menu is rebuilt on every open so it never goes stale.
 final class MenuBarController: NSObject, NSMenuDelegate {
     private let engine: Engine
-    private let config: Config
+    private let store: ConfigStore
+    private let onRemapRequest: (String) -> Void
     private var statusItem: NSStatusItem?
 
-    init(engine: Engine, config: Config) {
+    init(engine: Engine, store: ConfigStore, onRemapRequest: @escaping (String) -> Void) {
         self.engine = engine
-        self.config = config
+        self.store = store
+        self.onRemapRequest = onRemapRequest
     }
 
     func install() {
@@ -64,11 +67,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             break
         }
 
-        menu.addItem(sectionHeader("MAPPING"))
-        for row in MappingSummary.rows(for: config) {
-            let item = NSMenuItem(title: "\(row.button)   —   \(row.action)", action: nil, keyEquivalent: "")
-            item.isEnabled = false
-            item.image = symbolImage(buttonSymbols(for: row.button))
+        menu.addItem(sectionHeader("MAPPING — click a row, then press its new button"))
+        for entry in MappingSummary.displayOrder {
+            guard let action = store.config.buttons[entry.id] else { continue }
+            let item = NSMenuItem(title: "\(entry.label)   —   \(MappingSummary.describe(action))",
+                                  action: #selector(remapRow(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = entry.id
+            item.image = symbolImage(buttonSymbols(for: entry.label))
             menu.addItem(item)
         }
         menu.addItem(.separator())
@@ -88,7 +94,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     // MARK: - Header card
 
     private func headerView() -> NSView {
-        let view = NSView(frame: NSRect(x: 0, y: 0, width: 280, height: 52))
+        let view = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 52))
 
         let dot = NSTextField(labelWithString: "●")
         dot.font = .systemFont(ofSize: 12)
@@ -105,7 +111,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         subtitle.font = .systemFont(ofSize: 11)
         subtitle.textColor = .secondaryLabelColor
         subtitle.lineBreakMode = .byTruncatingTail
-        subtitle.frame = NSRect(x: 32, y: 8, width: 234, height: 15)
+        subtitle.frame = NSRect(x: 32, y: 8, width: 254, height: 15)
         view.addSubview(subtitle)
 
         return view
@@ -176,6 +182,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     // MARK: - Actions
+
+    @objc private func remapRow(_ sender: NSMenuItem) {
+        guard let buttonId = sender.representedObject as? String else { return }
+        onRemapRequest(buttonId)
+    }
 
     @objc private func togglePause() {
         engine.togglePause()

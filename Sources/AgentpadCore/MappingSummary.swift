@@ -4,7 +4,7 @@ import Foundation
 /// menu bar dropdown. Pure formatting, no AppKit.
 public enum MappingSummary {
     /// Fixed display order: button id → label shown to the user.
-    static let displayOrder: [(id: String, label: String)] = [
+    public static let displayOrder: [(id: String, label: String)] = [
         ("a", "A"), ("b", "B"), ("x", "X"), ("y", "Y"),
         ("dpadUp", "D-Pad ↑"), ("dpadDown", "D-Pad ↓"),
         ("dpadLeft", "D-Pad ←"), ("dpadRight", "D-Pad →"),

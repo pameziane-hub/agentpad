@@ -14,13 +14,17 @@ final class Engine {
 
     private let controller: ControllerService
     private let output: OutputService
-    private let config: Config
+    private let store: ConfigStore
     private var accessibilityTrusted: Bool
 
     private(set) var state: State = .noController
     private(set) var controllerName: String?
     var batteryDescription: String? { controller.batteryDescription }
     var onStateChange: (() -> Void)?
+    /// The View button is reserved for UI (mapping overlay / cancel capture).
+    var onViewButton: (() -> Void)?
+    /// Remap capture: gets every button event first; returning true consumes it.
+    var captureHandler: ((String, Bool) -> Bool)?
 
     private let log = Logger(subsystem: "com.paulameziane.agentpad", category: "engine")
     private var paused = false
@@ -30,11 +34,11 @@ final class Engine {
     private var timer: Timer?
     private var lastTick = Date.timeIntervalSinceReferenceDate
 
-    init(controller: ControllerService, output: OutputService, config: Config,
+    init(controller: ControllerService, output: OutputService, store: ConfigStore,
          accessibilityTrusted: Bool) {
         self.controller = controller
         self.output = output
-        self.config = config
+        self.store = store
         self.accessibilityTrusted = accessibilityTrusted
     }
 
@@ -96,8 +100,9 @@ final class Engine {
         let dt = min(now - lastTick, 0.1)
         lastTick = now
 
+        let pointer = store.config.pointer
         let move = Curves.shape(x: controller.leftStick.x, y: controller.leftStick.y,
-                                deadzone: config.pointer.deadzone, expo: config.pointer.expo)
+                                deadzone: pointer.deadzone, expo: pointer.expo)
         if move != .zero, !stickWasMoving {
             stickWasMoving = true
             movingTicks = 0
@@ -114,20 +119,29 @@ final class Engine {
         }
         if move != .zero {
             // GameController y points up, screen y points down
-            output.moveCursor(dx: CGFloat(Double(move.x) * config.pointer.maxSpeed * dt),
-                              dy: CGFloat(Double(-move.y) * config.pointer.maxSpeed * dt))
+            output.moveCursor(dx: CGFloat(Double(move.x) * pointer.maxSpeed * dt),
+                              dy: CGFloat(Double(-move.y) * pointer.maxSpeed * dt))
         }
 
+        let scrollConfig = store.config.scroll
         let scroll = Curves.shape(x: controller.rightStick.x, y: controller.rightStick.y,
-                                  deadzone: config.scroll.deadzone, expo: 0)
+                                  deadzone: scrollConfig.deadzone, expo: 0)
         if scroll != .zero {
-            output.scroll(dx: Double(-scroll.x) * config.scroll.speed * dt,
-                          dy: Double(scroll.y) * config.scroll.speed * dt)
+            output.scroll(dx: Double(-scroll.x) * scrollConfig.speed * dt,
+                          dy: Double(scroll.y) * scrollConfig.speed * dt)
         }
     }
 
     private func handleButton(id: String, pressed: Bool) {
-        guard let action = config.buttons[id] else { return }
+        // View is the UI button: overlay toggle / capture cancel, never mapped
+        if id == "view" {
+            if pressed { onViewButton?() }
+            return
+        }
+        // an active remap capture eats the event
+        if let capture = captureHandler, capture(id, pressed) { return }
+
+        guard let action = store.config.buttons[id] else { return }
 
         // pause must always work, even while paused
         if case .pause = action {

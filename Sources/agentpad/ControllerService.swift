@@ -80,6 +80,8 @@ final class ControllerService {
         bind(pad.dpad.left, as: "dpadLeft")
         bind(pad.dpad.right, as: "dpadRight")
         bind(pad.buttonMenu, as: "menu")
+        // the small left button ("two windows"): reserved as the UI button
+        if let view = pad.buttonOptions { bind(view, as: "view") }
     }
 
     private func bind(_ button: GCControllerButtonInput, as id: String) {
