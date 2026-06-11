@@ -64,11 +64,42 @@ extension ButtonAction: Codable {
     }
 }
 
+/// Western-mode sound effects: synthesized gunshot on Return, reload click
+/// on left click. Drop a shot.wav / reload.wav next to mapping.json to
+/// replace the built-in sounds.
+public struct FxConfig: Codable, Equatable {
+    public var sounds: Bool
+
+    public init(sounds: Bool = false) {
+        self.sounds = sounds
+    }
+}
+
 public struct Config: Codable, Equatable {
     public var pointer: PointerConfig
     public var scroll: ScrollConfig
     /// Button id (a, b, x, y, dpadUp…, leftShoulder…, menu) → action.
     public var buttons: [String: ButtonAction]
+    public var fx: FxConfig
+
+    private enum CodingKeys: String, CodingKey { case pointer, scroll, buttons, fx }
+
+    public init(pointer: PointerConfig, scroll: ScrollConfig,
+                buttons: [String: ButtonAction], fx: FxConfig = FxConfig()) {
+        self.pointer = pointer
+        self.scroll = scroll
+        self.buttons = buttons
+        self.fx = fx
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        pointer = try container.decode(PointerConfig.self, forKey: .pointer)
+        scroll = try container.decode(ScrollConfig.self, forKey: .scroll)
+        buttons = try container.decode([String: ButtonAction].self, forKey: .buttons)
+        // configs written before the fx feature existed have no fx key
+        fx = try container.decodeIfPresent(FxConfig.self, forKey: .fx) ?? FxConfig()
+    }
 
     public static let `default` = Config(
         pointer: PointerConfig(deadzone: 0.12, expo: 0.6, maxSpeed: 1400),

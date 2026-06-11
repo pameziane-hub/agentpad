@@ -14,6 +14,13 @@ public final class ConfigStore {
         self.url = url
     }
 
+    public func setSounds(_ enabled: Bool) {
+        guard config.fx.sounds != enabled else { return }
+        config.fx.sounds = enabled
+        ConfigLoader.write(config, to: url)
+        onChange?()
+    }
+
     public func swapBinding(_ first: String, _ second: String) {
         guard first != second else { return }
         let firstAction = config.buttons[first]

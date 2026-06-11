@@ -79,6 +79,13 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         }
         menu.addItem(.separator())
 
+        let sounds = NSMenuItem(title: "Sound FX (shot & reload)",
+                                action: #selector(toggleSounds), keyEquivalent: "")
+        sounds.target = self
+        sounds.state = store.config.fx.sounds ? .on : .off
+        sounds.image = symbolImage(["speaker.wave.2.fill"])
+        menu.addItem(sounds)
+
         let openConfig = NSMenuItem(title: "Open Config", action: #selector(openConfigFile), keyEquivalent: "")
         openConfig.target = self
         openConfig.image = symbolImage(["gearshape"])
@@ -190,6 +197,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func togglePause() {
         engine.togglePause()
+    }
+
+    @objc private func toggleSounds() {
+        store.setSounds(!store.config.fx.sounds)
     }
 
     @objc private func openConfigFile() {

@@ -15,6 +15,7 @@ final class Engine {
     private let controller: ControllerService
     private let output: OutputService
     private let store: ConfigStore
+    private let soundFX = SoundFX()
     private var accessibilityTrusted: Bool
 
     private(set) var state: State = .noController
@@ -152,11 +153,16 @@ final class Engine {
 
         switch action {
         case .leftClick:
+            if pressed, store.config.fx.sounds { soundFX.playReload() }
             pressed ? output.leftDown() : output.leftUp()
         case .rightClick:
             pressed ? output.rightDown() : output.rightUp()
         case .key(let raw):
             guard pressed, let sequence = KeyComboParser.parseSequence(raw) else { return }
+            // western mode: Return fires a (synthesized) revolver shot
+            if store.config.fx.sounds, sequence.contains(where: { $0.keyCode == 36 }) {
+                soundFX.playShot()
+            }
             output.post(sequence: sequence)
         case .url(let urlString):
             guard pressed else { return }

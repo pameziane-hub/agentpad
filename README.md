@@ -59,6 +59,17 @@ macOS requires explicit permission before any app may control mouse and keyboard
 | **LB** (left bumper) | Cmd+` — cycle windows of the frontmost app |
 | **L3 / R3** (stick click) | Cmd+C / Cmd+V — copy & paste |
 | Menu (☰) | Pause / resume agentpad |
+| **View** (⧉, small left button) | Toggle the on-screen mapping overlay (reserved, not remappable) |
+
+## Rebinding without editing JSON
+
+Click any mapping row in the menu bar dropdown, then press the button that should own that action — done. The two buttons **swap** their actions (nothing gets lost), the change is saved to your config immediately, and a translucent overlay guides you through it. Press **View** to cancel, or wait out the 6-second timeout.
+
+The same overlay doubles as a cheat sheet: tap **View** anytime to see the full current mapping mid-session — it's click-through and never steals focus.
+
+## Western mode 🔫
+
+Optional sound effects, off by default: firing a prompt with Return plays a synthesized revolver shot, left click plays a reload clack. Toggle via **Sound FX** in the menu. The sounds are generated in code (no audio assets); drop your own `shot.wav` / `reload.wav` into `~/.config/agentpad/` to replace them.
 
 ## Configuration
 
