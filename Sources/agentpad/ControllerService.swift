@@ -1,3 +1,4 @@
+import AgentpadCore
 import Foundation
 import GameController
 import os.log
@@ -14,6 +15,8 @@ final class ControllerService {
     private(set) var leftStick: SIMD2<Float> = .zero
     private(set) var rightStick: SIMD2<Float> = .zero
     private(set) var current: GCController?
+    /// Hysteresis state per analog trigger ("leftTrigger"/"rightTrigger").
+    private var triggerGates: [String: TriggerGate] = [:]
 
     /// e.g. "82 % ⚡" while charging, nil when the controller doesn't report battery
     var batteryDescription: String? {
@@ -71,8 +74,8 @@ final class ControllerService {
         bind(pad.buttonY, as: "y")
         bind(pad.leftShoulder, as: "leftShoulder")
         bind(pad.rightShoulder, as: "rightShoulder")
-        bind(pad.leftTrigger, as: "leftTrigger")
-        bind(pad.rightTrigger, as: "rightTrigger")
+        bindTrigger(pad.leftTrigger, as: "leftTrigger")
+        bindTrigger(pad.rightTrigger, as: "rightTrigger")
         if let l3 = pad.leftThumbstickButton { bind(l3, as: "l3") }
         if let r3 = pad.rightThumbstickButton { bind(r3, as: "r3") }
         bind(pad.dpad.up, as: "dpadUp")
@@ -88,6 +91,19 @@ final class ControllerService {
         button.pressedChangedHandler = { [weak self] _, _, pressed in
             self?.log.debug("button \(id, privacy: .public) \(pressed ? "down" : "up", privacy: .public)")
             self?.onButton?(id, pressed)
+        }
+    }
+
+    /// Triggers are analog and GCController's own isPressed fires on a
+    /// feather touch — a finger resting on LT produced phantom taps, which
+    /// the layer turned into phantom right clicks. The gate adds a real
+    /// pull threshold with hysteresis (press >= 0.30, release <= 0.15).
+    private func bindTrigger(_ button: GCControllerButtonInput, as id: String) {
+        triggerGates[id] = TriggerGate()
+        button.valueChangedHandler = { [weak self] _, value, _ in
+            guard let self, let pressed = self.triggerGates[id]?.update(value: value) else { return }
+            self.log.debug("trigger \(id, privacy: .public) \(pressed ? "down" : "up", privacy: .public) value-gated")
+            self.onButton?(id, pressed)
         }
     }
 }

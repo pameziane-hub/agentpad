@@ -9,6 +9,8 @@ All notable changes to agentpad. Format follows [Keep a Changelog](https://keepa
 
 ### Fixed
 - Picking a sound flavor no longer slams the menu shut: the sound menu re-opens in place with the checkmark visibly set on your pick, so you can keep trying flavors and click elsewhere when happy. (AppKit closes menus on click unconditionally; the re-open is the workaround.)
+- **A is a left click, period — three sources of phantom context menus are gone:** (1) any companion press during an LT hold now marks the hold as a chord, so releasing LT inside the tap window can no longer fire its right-click tap on top; (2) synthetic clicks and drags no longer inherit modifier state — a stuck Ctrl used to turn left clicks into context-menu clicks; (3) analog triggers now go through a pull threshold with hysteresis (press ≥ 0.30, release ≤ 0.15), so a finger resting on LT stops producing phantom taps.
+- A malformed config section (say, a hand-edited `magnet` block) now falls back to its defaults instead of discarding the whole config — your bindings survive.
 
 ## [0.3.0] — 2026-06-11
 

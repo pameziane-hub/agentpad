@@ -64,13 +64,26 @@ final class LayerRouterTests: XCTestCase {
                        .tap(.rightClick))
     }
 
-    func testNonOverlayButtonDuringHoldActsNormallyAndKeepsTap() {
+    func testNonOverlayButtonDuringHoldActsNormallyAndSuppressesTap() {
         _ = router.handle(id: "leftTrigger", pressed: true, at: 0, buttons: buttons)
         // RT is not in the overlay: it keeps its base action
-        XCTAssertEqual(router.handle(id: "rightTrigger", pressed: true, at: 0, buttons: buttons),
+        XCTAssertEqual(router.handle(id: "rightTrigger", pressed: true, at: 0.05, buttons: buttons),
                        .action(.key("return"), pressed: true))
-        // and it does not consume the layer: the tap still fires
-        XCTAssertEqual(router.handle(id: "leftTrigger", pressed: false, at: 0, buttons: buttons),
+        _ = router.handle(id: "rightTrigger", pressed: false, at: 0.1, buttons: buttons)
+        // but ANY companion press proves the hold was a chord, not a tap:
+        // releasing LT inside the tap window must not fire a phantom right
+        // click on top (field bug 2026-06-12: context menus kept popping)
+        XCTAssertEqual(router.handle(id: "leftTrigger", pressed: false, at: 0.2, buttons: buttons),
+                       .nothing)
+    }
+
+    func testReleaseOfEarlierButtonDuringHoldKeepsTap() {
+        // a button that was already down BEFORE the layer is no chord:
+        // only presses during the hold suppress the tap, releases don't
+        _ = router.handle(id: "rightTrigger", pressed: true, at: 0, buttons: buttons)
+        _ = router.handle(id: "leftTrigger", pressed: true, at: 0.1, buttons: buttons)
+        _ = router.handle(id: "rightTrigger", pressed: false, at: 0.15, buttons: buttons)
+        XCTAssertEqual(router.handle(id: "leftTrigger", pressed: false, at: 0.25, buttons: buttons),
                        .tap(.rightClick))
     }
 

@@ -179,9 +179,11 @@ public struct Config: Codable, Equatable {
         pointer = try container.decode(PointerConfig.self, forKey: .pointer)
         scroll = try container.decode(ScrollConfig.self, forKey: .scroll)
         buttons = try container.decode([String: ButtonAction].self, forKey: .buttons)
-        // sections added over time stay optional so old configs keep decoding
-        fx = try container.decodeIfPresent(FxConfig.self, forKey: .fx) ?? FxConfig()
-        magnet = try container.decodeIfPresent(MagnetConfig.self, forKey: .magnet) ?? MagnetConfig()
+        // sections added over time stay optional so old configs keep
+        // decoding — and a MALFORMED section falls back to its defaults
+        // instead of nuking the whole config (and the user's bindings)
+        fx = (try? container.decode(FxConfig.self, forKey: .fx)) ?? FxConfig()
+        magnet = (try? container.decode(MagnetConfig.self, forKey: .magnet)) ?? MagnetConfig()
     }
 
     public static let `default` = Config(

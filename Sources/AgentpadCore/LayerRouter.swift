@@ -68,12 +68,16 @@ public struct LayerRouter {
 
     private mutating func handlePress(of id: String, at time: TimeInterval,
                                       buttons: [String: ButtonAction]) -> Event {
-        if let layerId = heldLayer, layerId != id,
-           case .layer(_, let overlay)? = buttons[layerId],
-           let overlayAction = overlay[id] {
+        if let layerId = heldLayer, layerId != id {
+            // ANY companion press makes the hold a chord — the layer release
+            // must never fire its tap on top of it (phantom right clicks
+            // kept opening context menus, field bug 2026-06-12)
             layerUsed = true
-            pressActions[id] = overlayAction
-            return .action(overlayAction, pressed: true)
+            if case .layer(_, let overlay)? = buttons[layerId],
+               let overlayAction = overlay[id] {
+                pressActions[id] = overlayAction
+                return .action(overlayAction, pressed: true)
+            }
         }
         // an open menu: slots pick from it and KEEP it open (so the slots
         // can be tried in a row), tapping the layer button again closes it,

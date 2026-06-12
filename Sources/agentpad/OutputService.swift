@@ -50,7 +50,11 @@ final class OutputService {
         let type: CGEventType = leftButtonHeld ? .leftMouseDragged : .mouseMoved
         let event = CGEvent(mouseEventSource: source, mouseType: type,
                             mouseCursorPosition: target, mouseButton: .left)
-        if leftButtonHeld { event?.setIntegerValueField(.mouseEventClickState, value: clickCount) }
+        if leftButtonHeld {
+            // drags must stay modifier-clean like clicks (see postMouse)
+            event?.flags = []
+            event?.setIntegerValueField(.mouseEventClickState, value: clickCount)
+        }
         event?.post(tap: .cghidEventTap)
     }
 
@@ -101,6 +105,9 @@ final class OutputService {
     private func postMouse(_ type: CGEventType, button: CGMouseButton, clickCount: Int64 = 1) {
         let event = CGEvent(mouseEventSource: source, mouseType: type,
                             mouseCursorPosition: currentLocation(), mouseButton: button)
+        // never inherit modifier state: a stuck or held Ctrl would turn the
+        // left click into a context-menu click (field bug 2026-06-12)
+        event?.flags = []
         event?.setIntegerValueField(.mouseEventClickState, value: clickCount)
         event?.post(tap: .cghidEventTap)
     }

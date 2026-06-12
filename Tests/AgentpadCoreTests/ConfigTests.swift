@@ -69,6 +69,19 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(overlay["dpadDown"], .text("/"))
     }
 
+    func testMalformedSectionFallsBackWithoutNukingTheConfig() throws {
+        // a broken magnet section must not cost the user their bindings
+        let json = """
+        {"pointer":{"deadzone":0.1,"expo":0.5,"maxSpeed":1000},
+         "scroll":{"deadzone":0.1,"speed":500},
+         "buttons":{"a":{"type":"leftClick"}},
+         "magnet":{"enabled":"yes"}}
+        """
+        let config = try JSONDecoder().decode(Config.self, from: Data(json.utf8))
+        XCTAssertEqual(config.buttons["a"], .leftClick)
+        XCTAssertEqual(config.magnet, MagnetConfig())
+    }
+
     func testDecodesLayerAction() throws {
         let json = """
         {"type":"layer","tap":{"type":"rightClick"},
