@@ -52,6 +52,23 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(Config.default.buttons["menu"], .statusMenu)
     }
 
+    func testDecodesTextAction() throws {
+        let action = try JSONDecoder().decode(
+            ButtonAction.self, from: Data(#"{"type":"text","value":"/"}"#.utf8))
+        XCTAssertEqual(action, .text("/"))
+        let data = try JSONEncoder().encode(ButtonAction.text("/"))
+        XCTAssertEqual(try JSONDecoder().decode(ButtonAction.self, from: data), .text("/"))
+    }
+
+    func testDefaultLayerTypesSlashOnDpadDown() throws {
+        // the slash opens every CLI agent's command menu; text (not a key
+        // combo) so it survives keyboard layouts where "/" needs Shift
+        guard case .layer(_, let overlay)? = Config.default.buttons["leftTrigger"] else {
+            return XCTFail("LT should be a layer")
+        }
+        XCTAssertEqual(overlay["dpadDown"], .text("/"))
+    }
+
     func testDecodesLayerAction() throws {
         let json = """
         {"type":"layer","tap":{"type":"rightClick"},
@@ -86,6 +103,7 @@ final class ConfigTests: XCTestCase {
                            "x": .key("cmd+z"),
                            "y": .key("ctrl+c"),
                            "dpadUp": .key("cmd+a"),
+                           "dpadDown": .text("/"),
                            "dpadLeft": .key("ctrl+left"),
                            "dpadRight": .key("ctrl+right"),
                        ]))

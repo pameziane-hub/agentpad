@@ -91,6 +91,7 @@ A Steam-Input-style hold layer puts the essential desktop shortcuts on the pad:
 | LT + **X** | Undo (Cmd+Z) |
 | LT + **Y** | Interrupt (Ctrl+C) — *stop a runaway terminal process* |
 | LT + **D-Pad ↑** | Select All (Cmd+A) |
+| LT + **D-Pad ↓** | Types `/` — *opens the slash-command menu of Claude Code & friends; walk it with the D-Pad, fire with RT* |
 | LT + **D-Pad ←/→** | Switch macOS Spaces |
 
 Picks keep the menu open so you can chain them; tap LT again (or press any
@@ -123,6 +124,7 @@ Every button takes one of these actions:
 ```json
 { "type": "key",  "value": "shift+tab" }     // combo: cmd, shift, ctrl, opt + key
 { "type": "key",  "value": "ctrl ctrl" }     // space-separated = sequence (double-tap)
+{ "type": "text", "value": "/" }              // literal text, keyboard-layout-independent
 { "type": "url",  "value": "superwhisper://record" }
 { "type": "leftClick" } | { "type": "rightClick" } | { "type": "pause" } | { "type": "statusMenu" }
 { "type": "layer", "tap": { "type": "rightClick" },   // hold-layer: tap action +

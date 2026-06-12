@@ -261,6 +261,9 @@ final class Engine {
                                  volume: store.config.fx.volume)
             }
             output.post(sequence: sequence)
+        case .text(let string):
+            guard pressed else { return }
+            output.typeText(string)
         case .url(let urlString):
             guard pressed else { return }
             output.open(urlString: urlString)

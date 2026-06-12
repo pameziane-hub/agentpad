@@ -4,6 +4,9 @@ All notable changes to agentpad. Format follows [Keep a Changelog](https://keepa
 
 ## [Unreleased]
 
+### Added
+- **Slash from the pad:** LT + D-Pad ↓ types `/` — the entry into every CLI agent's slash-command menu; walk it with the D-Pad, fire with RT. Backed by a new `text` action type that types literal text independent of keyboard layout (key codes are positional — the US slash key would type `-` on German ISO), and the foundation for configurable text snippets.
+
 ### Fixed
 - Picking a sound flavor no longer slams the menu shut: the sound menu re-opens in place with the checkmark visibly set on your pick, so you can keep trying flavors and click elsewhere when happy. (AppKit closes menus on click unconditionally; the re-open is the workaround.)
 

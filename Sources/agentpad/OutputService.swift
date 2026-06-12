@@ -128,6 +128,26 @@ final class OutputService {
         }
     }
 
+    /// Types literal text: the events carry the unicode payload instead of a
+    /// positional key code, so "/" stays "/" on German ISO as well as US
+    /// ANSI. CGEvent caps the payload per event (~20 UTF-16 units), hence
+    /// the chunking — also the base for longer snippets later.
+    func typeText(_ string: String) {
+        let units = Array(string.utf16)
+        let chunkSize = 20
+        for start in stride(from: 0, to: units.count, by: chunkSize) {
+            let chunk = Array(units[start..<min(start + chunkSize, units.count)])
+            for keyDown in [true, false] {
+                guard let event = CGEvent(keyboardEventSource: source,
+                                          virtualKey: 0, keyDown: keyDown) else { continue }
+                event.keyboardSetUnicodeString(stringLength: chunk.count,
+                                               unicodeString: chunk)
+                event.post(tap: .cghidEventTap)
+            }
+        }
+        log.debug("typeText \(string, privacy: .public)")
+    }
+
     func post(_ combo: KeyCombo) {
         if KeyComboParser.isModifierOnly(combo) {
             postModifierTap(combo)

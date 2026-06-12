@@ -16,12 +16,16 @@ public struct ScrollConfig: Codable, Equatable {
 }
 
 /// What a controller button does. JSON uses a `type` discriminator:
-/// `{"type":"key","value":"shift+tab"}`, `{"type":"url","value":"superwhisper://record"}`,
-/// `{"type":"leftClick"}`, `{"type":"rightClick"}`, `{"type":"pause"}`,
+/// `{"type":"key","value":"shift+tab"}`, `{"type":"text","value":"/"}`,
+/// `{"type":"url","value":"superwhisper://record"}`, `{"type":"leftClick"}`,
+/// `{"type":"rightClick"}`, `{"type":"pause"}`,
 /// `{"type":"layer","tap":{…},"overlay":{"dpadLeft":{…}}}`.
 public indirect enum ButtonAction: Equatable {
     /// A key combo or space-separated sequence, parsed by KeyComboParser.
     case key(String)
+    /// Literal text typed as-is, keyboard-layout-independent — unlike `key`,
+    /// whose codes are positional ("/" would need Shift+7 on German ISO).
+    case text(String)
     /// A URL/deep link opened with the default handler.
     case url(String)
     case leftClick
@@ -45,6 +49,7 @@ extension ButtonAction: Codable {
         let type = try container.decode(String.self, forKey: .type)
         switch type {
         case "key": self = .key(try container.decode(String.self, forKey: .value))
+        case "text": self = .text(try container.decode(String.self, forKey: .value))
         case "url": self = .url(try container.decode(String.self, forKey: .value))
         case "leftClick": self = .leftClick
         case "rightClick": self = .rightClick
@@ -66,6 +71,9 @@ extension ButtonAction: Codable {
         switch self {
         case .key(let value):
             try container.encode("key", forKey: .type)
+            try container.encode(value, forKey: .value)
+        case .text(let value):
+            try container.encode("text", forKey: .type)
             try container.encode(value, forKey: .value)
         case .url(let value):
             try container.encode("url", forKey: .type)
@@ -202,6 +210,9 @@ public struct Config: Codable, Equatable {
                 "x": .key("cmd+z"),
                 "y": .key("ctrl+c"),
                 "dpadUp": .key("cmd+a"),
+                // slash opens the command menu of every CLI coding agent;
+                // typed as text so it survives non-US keyboard layouts
+                "dpadDown": .text("/"),
                 "dpadLeft": .key("ctrl+left"),
                 "dpadRight": .key("ctrl+right"),
             ]),

@@ -14,6 +14,11 @@ final class MappingSummaryTests: XCTestCase {
         XCTAssertEqual(MappingSummary.describe(.pause), "Pause / Resume")
     }
 
+    func testDescribesTextActions() {
+        XCTAssertEqual(MappingSummary.describe(.text("/")), "Types /")
+        XCTAssertEqual(MappingSummary.describe(.text("/clear")), "Types /clear")
+    }
+
     func testDescribesKnownDictationUrls() {
         XCTAssertEqual(MappingSummary.describe(.url("superwhisper://record")), "Superwhisper")
         XCTAssertEqual(MappingSummary.describe(.url("raycast://foo")), "raycast://foo")
@@ -39,7 +44,7 @@ final class MappingSummaryTests: XCTestCase {
             "A", "B", "X", "Y",
             "D-Pad ↑", "D-Pad ↓", "D-Pad ←", "D-Pad →",
             "LT", "LT + A", "LT + B", "LT + X", "LT + Y",
-            "LT + D-Pad ↑", "LT + D-Pad ←", "LT + D-Pad →",
+            "LT + D-Pad ↑", "LT + D-Pad ↓", "LT + D-Pad ←", "LT + D-Pad →",
             "RT", "LB", "RB", "L3", "R3", "Menu",
         ])
     }
@@ -56,8 +61,10 @@ final class MappingSummaryTests: XCTestCase {
         XCTAssertEqual(rows[ltIndex + 4].action, "Ctrl+C")
         XCTAssertEqual(rows[ltIndex + 5].button, "LT + D-Pad ↑")
         XCTAssertEqual(rows[ltIndex + 5].action, "Cmd+A")
-        XCTAssertEqual(rows[ltIndex + 6].button, "LT + D-Pad ←")
-        XCTAssertEqual(rows[ltIndex + 6].action, "Ctrl+Left")
+        XCTAssertEqual(rows[ltIndex + 6].button, "LT + D-Pad ↓")
+        XCTAssertEqual(rows[ltIndex + 6].action, "Types /")
+        XCTAssertEqual(rows[ltIndex + 7].button, "LT + D-Pad ←")
+        XCTAssertEqual(rows[ltIndex + 7].action, "Ctrl+Left")
     }
 
     func testOverlayRowsUseShortLabelsForTheHud() {

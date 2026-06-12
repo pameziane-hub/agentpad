@@ -68,6 +68,8 @@ public enum MappingSummary {
             return url.lowercased().hasPrefix("superwhisper://") ? "Superwhisper" : url
         case .layer(let tap, _):
             return tap.map { "\(describe($0)) (tap)" } ?? "Layer"
+        case .text(let value):
+            return "Types \(value)"
         case .key(let raw):
             return raw.split(separator: " ")
                 .map { combo in
