@@ -2,6 +2,11 @@
 
 All notable changes to agentpad. Format follows [Keep a Changelog](https://keepachangelog.com), versioning follows [SemVer](https://semver.org).
 
+## [Unreleased]
+
+### Fixed
+- Picking a sound flavor no longer slams the menu shut: the sound menu re-opens in place with the checkmark visibly set on your pick, so you can keep trying flavors and click elsewhere when happy. (AppKit closes menus on click unconditionally; the re-open is the workaround.)
+
 ## [0.3.0] — 2026-06-11
 
 ### Added

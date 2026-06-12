@@ -16,6 +16,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let hasCustomShot: Bool
     private let hasCustomReload: Bool
     private var statusItem: NSStatusItem?
+    /// One-shot mute: the re-popped sound menu comes back with the picked
+    /// row under the cursor, whose highlight would replay the sound the
+    /// click just played.
+    private var auditionMute: (variant: String, until: Date)?
 
     private static let shotNames = [
         "classic": "Revolver", "laser": "Laser", "8bit": "8-Bit", "silenced": "Silenced",
@@ -136,7 +140,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     // MARK: - Sound FX submenu
     // Native rows so the D-Pad (arrow keys) can walk them. Auditioning
     // happens on HIGHLIGHT (hover or arrows), macOS-font-menu style: walking
-    // the list plays each flavor, clicking commits the choice.
+    // the list plays each flavor, clicking commits the choice. AppKit menus
+    // always close on item click (keepsMenuPresented is iOS-only, custom
+    // views would break D-Pad walking), so a pick immediately re-opens a
+    // fresh sound menu with the picked row back under the cursor: the
+    // checkmark lands visibly, picks chain, clicking elsewhere closes.
 
     private func soundFxItem() -> NSMenuItem {
         let parent = NSMenuItem(title: "Sound FX", action: nil, keyEquivalent: "")
@@ -187,8 +195,29 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     /// without committing it.
     func menu(_ menu: NSMenu, willHighlight item: NSMenuItem?) {
         guard let item, let variant = item.representedObject as? String else { return }
-        if item.action == #selector(selectShot(_:))   { onAuditionShot(variant) }
-        if item.action == #selector(selectReload(_:)) { onAuditionReload(variant) }
+        let isShot = item.action == #selector(selectShot(_:))
+        let isReload = item.action == #selector(selectReload(_:))
+        guard isShot || isReload else { return }
+        if let mute = auditionMute {
+            auditionMute = nil
+            if mute.variant == variant, Date() < mute.until { return }
+        }
+        if isShot { onAuditionShot(variant) } else { onAuditionReload(variant) }
+    }
+
+    /// Closing is unavoidable on click, so this brings the menu right back:
+    /// freshly built (checkmarks current — the commit ran just before),
+    /// the picked row positioned under the cursor, auditioning still live.
+    /// Deferred one runloop turn so the old tracking session fully ends.
+    private func reopenSoundMenu(highlighting matches: @escaping (NSMenuItem) -> Bool) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let menu = self.soundFxItem().submenu else { return }
+            let anchor = menu.items.first(where: matches)
+            if let variant = anchor?.representedObject as? String {
+                self.auditionMute = (variant, Date().addingTimeInterval(1))
+            }
+            menu.popUp(positioning: anchor, at: NSEvent.mouseLocation, in: nil)
+        }
     }
 
     /// Slider row: drag, release, hear the new level on the click sound.
@@ -321,16 +350,27 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         store.setSounds(nowOn)
         // audible proof when switching on; silence means off
         if nowOn { onPreviewReload(store.config.fx.reloadVariant) }
+        reopenSoundMenu(highlighting: {
+            $0.action == #selector(MenuBarController.toggleSounds)
+        })
     }
 
     @objc private func selectShot(_ sender: NSMenuItem) {
         guard let variant = sender.representedObject as? String else { return }
         onPreviewShot(variant)
+        reopenSoundMenu(highlighting: {
+            $0.action == #selector(MenuBarController.selectShot(_:))
+                && $0.representedObject as? String == variant
+        })
     }
 
     @objc private func selectReload(_ sender: NSMenuItem) {
         guard let variant = sender.representedObject as? String else { return }
         onPreviewReload(variant)
+        reopenSoundMenu(highlighting: {
+            $0.action == #selector(MenuBarController.selectReload(_:))
+                && $0.representedObject as? String == variant
+        })
     }
 
     @objc private func toggleMagnet() {
